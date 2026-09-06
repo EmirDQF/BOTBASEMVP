@@ -29,7 +29,7 @@ describe('regressions: real-conversation bugs', () => {
     };
     const { obtenerRespuestaIA } = await import('./geminiService.js');
     const jid = `51987654001@s.whatsapp.net`;
-    const res = await obtenerRespuestaIA(jid, 'Me llamo Andre vi su anuncio en facebook de brackets', { client });
+    const res = await obtenerRespuestaIA(jid, 'Me llamo Andre vi su anuncio en facebook de servicios', { client });
     assert.equal(res.leadData.nombre, 'Andre');
   });
 

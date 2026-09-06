@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:unit",
     "test:smoke": "node scripts/smoke-test.js",
-    "test:unit": "set \"NODE_ENV=test\"&& node --test ./services/*.test.js",
+    "test:unit": "node --test \"./services/*.test.js\"",
     "prospect": "node scripts/runProspector.js"
   },
   "keywords": [],

@@ -13,10 +13,10 @@ before(async () => {
 });
 
 describe('geminiService refinements', () => {
-  it('replaces [NOMBRE_CLINICA] with fallback when clinic.name absent', async () => {
+  it('replaces business name placeholders with a generic fallback', async () => {
     const prompt = geminiService.buildSystemPromptWithContext('51900000000@s.whatsapp.net', null, null);
     assert.ok(!prompt.includes('[NOMBRE_CLINICA]'));
-    assert.ok(prompt.includes('nuestra clínica dental'));
+    assert.ok(prompt.includes('Empresa Demo'));
   });
 
   it('injects confirmed patient name into prompt and removes [NOMBRE_PACIENTE]', async () => {
@@ -25,6 +25,17 @@ describe('geminiService refinements', () => {
     const prompt = geminiService.buildSystemPromptWithContext('51900000001@s.whatsapp.net', session, null);
     assert.ok(!prompt.includes('[NOMBRE_PACIENTE]'));
     assert.ok(prompt.includes('Manuel'));
+  });
+
+  it('uses the supplied business profile instead of a hard-coded clinic name', async () => {
+    const prompt = geminiService.buildSystemPromptWithContext(
+      '51900000009@s.whatsapp.net',
+      null,
+      { name: 'Empresa Demo', address: 'Calle 1', hours: 'Lunes a viernes' },
+    );
+    assert.ok(prompt.includes('Empresa Demo'));
+    assert.ok(prompt.includes('Calle 1'));
+    assert.ok(!prompt.includes('hard-coded brand'));
   });
 
   it('getGeminiClient uses config.gemini.maxOutputTokens default 110', async () => {
@@ -60,5 +71,10 @@ describe('geminiService refinements', () => {
     assert.equal(geminiService.isExplicitConfirmation('sí'), true);
     assert.equal(geminiService.isExplicitConfirmation('OK'), true);
     assert.equal(geminiService.isExplicitConfirmation('sí, confirmo'), true);
+  });
+
+  it('detects catalog categories from the configured catalog aliases', async () => {
+    assert.equal(geminiService.determinarCategoriaImagen('¿Tienen el servicio principal?', ''), 'servicio-principal');
+    assert.equal(geminiService.determinarCategoriaImagen('¿Cuál es el horario?', ''), null);
   });
 });

@@ -39,7 +39,7 @@ function sanitizeDistrict(value) {
   if (!value || typeof value !== 'string') return null;
   const normalized = value.trim();
   const low = normalized.toLowerCase();
-  const banned = ['nuestra clínica', 'nuestra clinica', 'nuestra clínica dental', 'nuestra clinica dental', 'en lima', 'lima', 'no proporcionado', 'no proporcionada', 'el de siempre'];
+  const banned = ['nuestro negocio', 'nuestro negocio', 'en lima', 'lima', 'no proporcionado', 'no proporcionada', 'el de siempre'];
   for (const bad of banned) {
     if (low.includes(bad)) return null;
   }

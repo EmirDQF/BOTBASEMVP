@@ -25,7 +25,7 @@ const conversationData = [
       },
       {
         sender: 'bot',
-        text: '¡Hola! 🤍 En LUMINZU realizamos:\n• Ortodoncia (brackets tradicionales y para niños)\n• Limpieza dental y kit preventivo\n• Carillas dentales y diseño de sonrisa\n• Implantes dentales\n• Prótesis dental\n• Endodoncia\n• Odontopediatría\n\n¿Cuál de ellos te interesa para darte más detalles o mostrarte fotos? ✨',
+        text: '¡Hola! 🤍 Ofrecemos servicios personalizados para cada necesidad.\n\n¿Cuál de nuestras opciones te interesa para darte más detalles? ✨',
         timestamp: Date.now() - 1000 * 60 * 30,
       },
       {
@@ -35,7 +35,7 @@ const conversationData = [
       },
       {
         sender: 'bot',
-        text: '¡Claro que sí! Aquí te comparto la fachada de la clínica para que la reconozcas al llegar mañana. ✨',
+        text: '¡Claro que sí! Aquí te comparto una imagen de nuestra ubicación para que nos reconozcas al llegar. ✨',
         timestamp: Date.now() - 1000 * 60 * 8,
       },
       {

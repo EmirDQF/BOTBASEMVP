@@ -105,8 +105,8 @@ Perfecto, tu cita queda agendada.`);
     const { obtenerRespuestaIA } = (await import('./geminiService.js'));
     const res = await obtenerRespuestaIA(makeJid(), 'quiero agendar', { client });
     assert.ok(capturedRequest, 'generateContent should be called');
-    assert.ok(capturedRequest.systemInstruction.includes('Asistente Virtual Oficial'));
-    assert.ok(capturedRequest.systemInstruction.includes('LUMINZU'));
+    assert.ok(capturedRequest.systemInstruction.includes('asistente virtual'));
+    assert.ok(capturedRequest.systemInstruction.includes('Empresa Demo'));
     assert.ok(!capturedRequest.systemInstruction.includes('Valeria'));
     assert.ok(res.texto.includes('Hola'));
   });
@@ -123,6 +123,12 @@ Perfecto, tu cita queda agendada.`);
     const raw = JSON.stringify({ response: { content: { parts: [{ text: 'La cita es a las 2:00 PM' }] } } });
     const cleaned = sanitizeModelTextOutput(raw);
     assert.equal(cleaned, 'La cita es a las 2:00 PM');
+  });
+
+  it('sanitizes model instruction blocks without leaking them to WhatsApp', async () => {
+    const { sanitizeModelTextOutput } = await import('./geminiService.js');
+    const raw = '<<<LEAD_JSON>>>{"nombre":"Ana"}<<<END_LEAD_JSON>>>\nRespuesta breve.';
+    assert.equal(sanitizeModelTextOutput(raw), 'Respuesta breve.');
   });
 
   it('sanitizes incomplete JSON prefix from model output', async () => {

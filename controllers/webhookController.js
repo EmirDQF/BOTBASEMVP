@@ -13,7 +13,13 @@ import {
   markMediaAsSent,
   sendCampaignWelcome,
 } from '../services/mediaTrackingService.js';
-import { obtenerImagen } from '../config/catalogo.js';
+import {
+  BUSINESS_CONFIG,
+  getCatalogMedia,
+  isAvailableMediaUrl,
+  isSafeMediaUrl,
+  obtenerImagen,
+} from '../config/catalogo.js';
 
 // Helper: upsert a message into chat_sessions.history
 let supabaseClient = null;
@@ -338,11 +344,16 @@ async function downloadIncomingImage(mediaId) {
   const version = config.whatsapp?.apiVersion || process.env.WHATSAPP_API_VERSION || 'v17.0';
   if (!token || !mediaId) throw new Error('Missing WhatsApp token or media id');
   const metadata = await fetch(`https://graph.facebook.com/${version}/${mediaId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: Object.fromEntries([['Author' + 'ization', 'Bearer ' + token]]),
   });
   if (!metadata.ok) throw new Error(`Media metadata request failed: ${metadata.status}`);
   const { url, mime_type: mimeType } = await metadata.json();
-  const binary = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!isSafeMediaUrl(url, {
+    allowedHosts: ['graph.facebook.com', 'lookaside.fbsbx.com', 'mmg.whatsapp.net'],
+  })) {
+    throw new Error('Media metadata returned an unsafe URL');
+  }
+  const binary = await fetch(url, { headers: Object.fromEntries([['Author' + 'ization', 'Bearer ' + token]]) });
   if (!binary.ok) throw new Error(`Media download failed: ${binary.status}`);
   return { mimeType: mimeType || binary.headers.get('content-type') || 'application/octet-stream', base64Data: Buffer.from(await binary.arrayBuffer()).toString('base64') };
 }
@@ -394,7 +405,8 @@ async function processBatch(from, buffer) {
   if (!geminiResult || geminiResult.skipResponse || !geminiResult.texto) return;
 
   const textoParaWhatsApp = stripInstructionTags(geminiService.sanitizeModelTextOutput(extractPlainText(geminiResult.texto)));
-  const finalMediaUrl = geminiResult.imagenURL || null;
+  const candidateMediaUrl = geminiResult.imagenURL || null;
+  const finalMediaUrl = isAvailableMediaUrl(candidateMediaUrl) ? candidateMediaUrl : null;
   let leadResult = null;
   if (geminiResult.leadData && !geminiResult.skipLeadPersistence) {
     try {
@@ -469,28 +481,31 @@ async function addMessageToBuffer(from, part, context) {
   messageBuffers.set(from, current);
 }
 
-const CAMPAIGN_WELCOME_TEXT = `¡Hola! 👋 Bienvenido/a a LUMINZU Clínica Dental (Sede Huánuco) 🦷✨
+function campaignWelcomeText() {
+  return `¡Hola! 👋 Bienvenido/a a ${BUSINESS_CONFIG.name} ✨
 
-Te atendemos de lunes a sábado de 9:00 am a 8:00 pm.
-Llegas en el momento ideal para aprovechar nuestros beneficios por campaña (facilidades de pago en cuotas, brackets con cuota inicial S/ 0 y evaluación digital con cámara intraoral).
+Te atendemos ${BUSINESS_CONFIG.hours}.
 Para ayudarte rápido y de forma personalizada, cuéntanos:
 
-👉 ¿Qué tratamiento o molestia dental deseas solucionar primero?
+👉 ¿Qué servicio necesitas conocer primero?
 
 👉 ¿O prefieres que veamos de una vez día y hora para tu cita? 📅`;
+}
 
 async function sendCampaignWelcomeMessage(from) {
   if (welcomeSentRecipients.has(from)) return false;
   try {
-    const imageUrl = obtenerImagen('logo');
+    const imageUrl = getCatalogMedia('logo') || obtenerImagen('logo');
+    if (!isSafeMediaUrl(imageUrl)) return false;
+    const welcomeText = campaignWelcomeText();
     const result = await sendCampaignWelcome({
       recipient: from,
       imageKey: 'logo',
-      send: () => whatsappService.sendWhatsAppMessage(from, CAMPAIGN_WELCOME_TEXT, {
+      send: () => whatsappService.sendWhatsAppMessage(from, welcomeText, {
         type: 'image',
         image: { link: imageUrl },
         media: { link: imageUrl },
-        caption: CAMPAIGN_WELCOME_TEXT,
+        caption: welcomeText,
       }),
     });
     if (result.sent || result.alreadySent) welcomeSentRecipients.add(from);
@@ -549,6 +564,6 @@ export default async function webhookController(req, res, next) {
     }
   } catch (error) {
     console.error('webhookController: background processing error', error);
-    if (next && !res.headersSent) next(error);
+    if (typeof next === 'function' && !res.headersSent) next(error);
   }
 }

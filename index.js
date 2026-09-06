@@ -79,14 +79,14 @@ function requirePanelAuth(req, res, next) {
   const [scheme, encoded] = authHeader.split(' ');
 
   if (!username || !password) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Panel Clinica"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Monitor Panel"');
     return res.status(503).json({
       error: 'Panel no configurado. Define PANEL_USER y PANEL_PASSWORD en Render o tu .env.'
     });
   }
 
   if (scheme !== 'Basic' || !encoded) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Panel Clinica"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Monitor Panel"');
     return res.status(401).send('Acceso requerido');
   }
 
@@ -102,7 +102,7 @@ function requirePanelAuth(req, res, next) {
   const providedPass = separatorIndex >= 0 ? decoded.slice(separatorIndex + 1) : '';
 
   if (providedUser !== username || providedPass !== password) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Panel Clinica"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Monitor Panel"');
     return res.status(401).send('Credenciales inválidas');
   }
 
@@ -154,7 +154,7 @@ if (!process.env.WHATSAPP_APP_SECRET) {
 }
 
 app.get('/', (req, res) => {
-  res.send('Bot Dental Operativo 24/7 🚀');
+  res.send('Bot Operativo 24/7 🚀');
 });
 
 // Health endpoint

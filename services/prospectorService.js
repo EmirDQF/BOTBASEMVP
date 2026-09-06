@@ -2,15 +2,51 @@ import config from '../config/env.js';
 import { createClient } from '@supabase/supabase-js';
 
 const META_TOKEN = process.env.META_AD_LIBRARY_TOKEN || null;
-const COUNTRY = process.env.PROSPECTOR_COUNTRY || 'PE';
-const KEYWORDS = [
-  'clínica dental',
-  'ortodoncia',
-  'diseño de sonrisa',
-  'implantes dentales'
+const DEFAULT_COUNTRY = process.env.PROSPECTOR_COUNTRY || 'PE';
+const DEFAULT_KEYWORDS = [
+  'servicios profesionales',
+  'negocios locales',
+  'atención al cliente',
+  'reservas'
 ];
+const DEFAULT_NICHE = process.env.PROSPECTOR_NICHE || '';
 
-const supabase = createClient(config.supabase.url, config.supabase.serviceRoleKey);
+function parseList(value, fallback = []) {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+  if (typeof value !== 'string' || !value.trim()) return [...fallback];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parseList(parsed, fallback);
+  } catch {
+    // Comma-separated values are the documented CLI/env format.
+  }
+  return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+export function resolveProspectorConfig(options = {}) {
+  const keywords = parseList(
+    options.keywords ?? process.env.PROSPECTOR_KEYWORDS,
+    DEFAULT_KEYWORDS,
+  );
+  const niche = String(options.niche ?? DEFAULT_NICHE).trim();
+  return {
+    country: String(options.country ?? DEFAULT_COUNTRY).trim() || DEFAULT_COUNTRY,
+    niche,
+    keywords: keywords.length ? keywords : [...DEFAULT_KEYWORDS],
+    limit: Number(options.limit ?? process.env.PROSPECTOR_LIMIT ?? 50) || 50,
+  };
+}
+
+let supabase = null;
+
+function getSupabaseClient() {
+  if (supabase) return supabase;
+  const url = config.supabase?.url || process.env.SUPABASE_URL;
+  const key = config.supabase?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  supabase = createClient(url, key);
+  return supabase;
+}
 
 function extractPhoneFromText(text) {
   if (!text) return null;
@@ -20,13 +56,13 @@ function extractPhoneFromText(text) {
   return match ? match[1] : null;
 }
 
-async function fetchAdsForKeyword(keyword, limit = 50) {
+async function fetchAdsForKeyword(keyword, { country = DEFAULT_COUNTRY, limit = 50 } = {}) {
   if (!META_TOKEN) throw new Error('META_AD_LIBRARY_TOKEN is required');
   const base = 'https://graph.facebook.com/v19.0/ads_archive';
   const params = new URLSearchParams({
     access_token: META_TOKEN,
     search_terms: keyword,
-    ad_reached_countries: JSON.stringify([COUNTRY]),
+    ad_reached_countries: JSON.stringify([country]),
     ad_active_status: 'ACTIVE',
     limit: String(limit),
     fields: 'page_name,page_id,ad_snapshot_url,publisher_platforms,ad_creative{body,link_caption}'
@@ -38,12 +74,14 @@ async function fetchAdsForKeyword(keyword, limit = 50) {
   return json.data || [];
 }
 
-export async function runProspector() {
+export async function runProspector(options = {}) {
+  const prospectConfig = resolveProspectorConfig(options);
   const stats = { found: 0, upserted: 0, skipped: 0 };
-  for (const kw of KEYWORDS) {
+  for (const keyword of prospectConfig.keywords) {
+    const kw = prospectConfig.niche ? `${prospectConfig.niche} ${keyword}` : keyword;
     let ads = [];
     try {
-      ads = await fetchAdsForKeyword(kw);
+      ads = await fetchAdsForKeyword(kw, prospectConfig);
     } catch (e) {
       console.warn('prospector: failed to fetch ads for', kw, e && e.message ? e.message : e);
       continue;
@@ -68,7 +106,12 @@ export async function runProspector() {
       };
 
       try {
-        const { data, error } = await supabase.from('prospects').upsert(prospect, { onConflict: 'page_id' }).select('*').single();
+        const client = getSupabaseClient();
+        if (!client) {
+          stats.skipped += 1;
+          continue;
+        }
+        const { data, error } = await client.from('prospects').upsert(prospect, { onConflict: 'page_id' }).select('*').single();
         if (error) {
           console.warn('prospector: upsert error', error.message || error);
           stats.skipped += 1;

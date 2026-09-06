@@ -1,48 +1,30 @@
 import config from '../config/env.js';
-import { CATALOGO_LUMINZU } from '../config/catalogo.js';
+import {
+  BUSINESS_CONFIG,
+  CATALOG_DETECTION_RULES,
+  catalog,
+  SYSTEM_PROMPT as CATALOG_SYSTEM_PROMPT,
+  getCatalogMedia,
+} from '../config/catalogo.js';
 
 const LIMA_TIME_ZONE = 'America/Lima';
 const SESSION_TTL_MS = Number(process.env.GEMINI_SESSION_TTL_MS || 30 * 60 * 1000);
 const BOOKED_TTL_MS = Number(process.env.GEMINI_BOOKED_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000);
-const DEBOUNCE_MS = Number(process.env.GEMINI_DEBOUNCE_MS || 0);
+const DEBOUNCE_MS = Number(process.env.GEMINI_DEBOUNCE_MS || 2000);
 const MAX_HISTORY_MESSAGES = Number(process.env.GEMINI_MAX_HISTORY || 6);
 const MAX_OUTPUT_TOKENS = 300;
 const CLEANUP_MS = Number(process.env.GEMINI_CLEANUP_MS || 60 * 1000);
-export const SYSTEM_PROMPT = `Eres el asistente virtual de LUMINZU Clínica Dental. Responde breve y amable. Prioriza responder exactamente lo que el cliente pregunta; invita a agendar solo cuando ya diste la información pedida o el cliente muestra intención de cita, sin repetir la invitación en cada mensaje.
+export const SYSTEM_PROMPT = `${CATALOG_SYSTEM_PROMPT.replace('[NOMBRE DEL NEGOCIO]', BUSINESS_CONFIG.name)}
 
-El saludo inicial de campaña, con el logo y la información de bienvenida, ya fue entregado al usuario y no debe repetirse en respuestas posteriores. Si el paciente menciona una molestia o tratamiento, resuelve brevemente la duda e invítalo de inmediato a agendar la evaluación digital de S/ 30; si inicia tratamiento el mismo día, la evaluación es gratis. Si desea agendar directamente, solicita de forma ágil su Nombre Completo, tratamiento de interés y día y rango de hora preferido, de lunes a sábado de 9:00 am a 8:00 pm. Responde cualquier consulta sobre costos, dolor o procedimientos con calidez y brevedad (máximo 2 párrafos). Al final de CADA respuesta, guía siempre al paciente a agendar preguntando qué día le acomoda y si en turno mañana o tarde. Si confirma fecha y turno, solicita su Nombre Completo y DNI para reservar su cita.
+El saludo inicial ya fue entregado al usuario y no debe repetirse. Resuelve brevemente la duda e invita a avanzar cuando corresponda. Si desea agendar, solicita nombre completo, servicio de interés y día y rango de hora preferido. No inventes una cita ni datos que la persona no haya confirmado.
 
 Reglas:
 - Máximo 2-3 oraciones cortas y 1-2 emojis por mensaje.
-- El saludo inicial de campaña se envía una sola vez antes de la primera respuesta conversacional, con la etiqueta [ENVIAR_IMAGEN:logo]. No repitas ese saludo ni el logo en mensajes posteriores.
-- Si hablas de ortodoncia, menciona cuota inicial desde S/ 600 previa evaluación clínica.
-- Para los demás tratamientos, indica que el costo exacto se define en la evaluación clínica.
-- Cuando el paciente consulte o pregunte por un tema o tratamiento específico, agrega al final del mensaje la etiqueta EXACTA correspondiente según esta guía:
+- Si la persona consulta por un servicio del catálogo, puedes incluir al final la etiqueta [ENVIAR_IMAGEN:categoria] usando una categoría válida.
+- No envíes una imagen para preguntas generales, saludos, horarios o formas de pago.
 
-Guía de imágenes a enviar:
-• Bienvenida inicial o qué es Luminzu: [ENVIAR_IMAGEN:logo]
-• Dirección, sede o cómo llegar: [ENVIAR_IMAGEN:ubicacion]
-• Cómo es la clínica por fuera / fachada: [ENVIAR_IMAGEN:fachada]
-• Promociones, ofertas o costo de consulta: [ENVIAR_IMAGEN:promo_consulta]
-• Agendar, reservar o pedir cita: [ENVIAR_IMAGEN:agendatuconsulta]
-• Lista general de servicios o qué tratamientos hacen: [ENVIAR_IMAGEN:tratamientos]
-• Chequeo general o revisión de rutina: [ENVIAR_IMAGEN:chequeo]
-• Limpieza dental o prevención: [ENVIAR_IMAGEN:kit_preventivo]
-• Blanqueamiento dental: [ENVIAR_IMAGEN:blanqueamiento]
-• Carillas dentales: [ENVIAR_IMAGEN:carillas]
-• Ortodoncia / Brackets (información general): [ENVIAR_IMAGEN:bracketsmuestra]
-• Ortodoncia resultados o casos clínicos: [ENVIAR_IMAGEN:ortodoncia_antes_despues]
-• Ortodoncia para niños: [ENVIAR_IMAGEN:ortodonciakids]
-• Implantes dentales: [ENVIAR_IMAGEN:implantesdentales]
-• Prótesis dentales: [ENVIAR_IMAGEN:protesis]
-• Dolor de muela / dolor dental fuerte: [ENVIAR_IMAGEN:tienesdolormuela]
-• Endodoncia / tratamiento de conducto: [ENVIAR_IMAGEN:endodoncia]
-• Extracción dental / sacar muela: [ENVIAR_IMAGEN:extraccion]
-• Curaciones o calzas estéticas: [ENVIAR_IMAGEN:restauracion_resina]
-• Odontopediatría / atención de niños en general: [ENVIAR_IMAGEN:odontopediatria]
-• Curaciones en niños: [ENVIAR_IMAGEN:odontopediatricuracion]
-• Antes y después de estética dental general: [ENVIAR_IMAGEN:antesdespues]
-`;
+Catálogo disponible:
+${catalog.filter((item) => item.active !== false).map((item) => `- ${item.slug}: ${item.name} (${item.description})`).join('\n')}`;
 
 const chatSessions = new Map();
 const failureCounts = new Map();
@@ -186,7 +168,7 @@ function textFromHistory(history) {
 
 export function extractLeadDataFromText(text, senderPhone = null) {
   if (typeof text !== 'string' || !text.trim()) return null;
-  const nameMatch = text.match(/\b(?:me llamo|mi nombre es|soy)\s+([A-Za-zÁÉÍÓÚáéíóúÑñÜü]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+){0,2})(?=\s*(?:[,.\n]|vivo\b|vi\b|mi\b|tengo\b|y\b|con\b|$))/i);
+  const nameMatch = text.match(/\b(?:me llamo|me llasmo|me llamos|mi nombre es|soy)\s+([A-Za-zÁÉÍÓÚáéíóúÑñÜü]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+){0,2})(?=\s*(?:[,.\n]|vivo\b|vi\b|mi\b|tengo\b|y\b|con\b|$))/i);
   
   let phone = text.replace(/\D/g, '').match(/(?:51)?(9\d{8})/)?.[1] || null;
   if (!phone && senderPhone && /este (mismo )?n[uú]mero|mi n[uú]mero de whatsapp|con este whatsapp|a este n[uú]mero/i.test(text)) {
@@ -197,11 +179,13 @@ export function extractLeadDataFromText(text, senderPhone = null) {
   const dateMatch = text.match(/\b(?:hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado)(?:\s+\d{1,2}\s+de\s+[a-záéíóú]+)?(?:\s+(?:a\s*las?\s*)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?/i)
     || text.match(/\b\d{1,2}\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:a\s*las?\s*)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?/i);
   const motivoMatch = text.match(/\b(?:tratamiento|motivo)\s*(?:es|:)?\s*([^,.\n]+)/i);
+  const districtMatch = text.match(/\b(?:vivo|estoy|resido)\s+en\s+([^,.\n]+)/i);
 
   return {
     nombre: nameMatch?.[1]?.trim() || null,
     telefono: phone || null,
     motivo: motivoMatch?.[1]?.trim() || null,
+    distrito: districtMatch?.[1]?.trim() || null,
     fechaHora: dateMatch?.[0]?.trim() || null,
   };
 }
@@ -234,14 +218,28 @@ export function sanitizeModelTextOutput(rawText) {
     .replace(/```/g, '')
     .replace(/\[ENVIAR[_ ]?IMAGEN:[^\]]+\]/gi, '')
     .replace(/\[AGENDAR_CITA:\{[\s\S]*?\}\]/gi, '')
+    .replace(/<<<LEAD_JSON>>>[\s\S]*?<<<END_LEAD_JSON>>>/gi, '')
+    .replace(/🚨\s*¡?NUEVO PACIENTE AGENDADO!?[\s\S]*?(?=\n\n|$)/i, '')
     .trim();
   if (text.startsWith('{')) {
     try {
       const parsed = JSON.parse(text);
-      text = typeof parsed.response === 'string' ? parsed.response
-        : typeof parsed.text === 'string' ? parsed.text : text;
+      const extractText = (value) => {
+        if (typeof value === 'string') return value;
+        if (!value || typeof value !== 'object') return '';
+        for (const key of ['response', 'respuesta', 'content', 'text', 'texto', 'message']) {
+          const candidate = extractText(value[key]);
+          if (candidate) return candidate;
+        }
+        if (Array.isArray(value.parts)) return value.parts.map(extractText).filter(Boolean).join(' ');
+        if (Array.isArray(value)) return value.map(extractText).filter(Boolean).join(' ');
+        return '';
+      };
+      text = extractText(parsed) || text;
     } catch {
-      text = text.replace(/^\s*\{\s*"(?:response|texto|text|message)"\s*:\s*"([\s\S]*)"\s*\}\s*$/i, '$1');
+      text = text
+        .replace(/^\s*\{\s*"(?:response|respuesta|texto|text|message)"\s*:\s*"([\s\S]*)"?\s*\}\s*$/i, '$1')
+        .replace(/^\s*\{\s*"(?:response|respuesta|texto|text|message)"\s*:\s*"([\s\S]*)$/i, '$1');
     }
   }
   return text.replace(/[*_]/g, '').replace(/\s+/g, ' ').trim();
@@ -255,14 +253,14 @@ function limaNow() {
 }
 
 export function buildSystemPromptWithContext(jid, session = null, clinic = null) {
-  const profile = clinic || config.clinicProfile || {};
-  const address = profile.address || 'Alameda de la República N° 286, esquina con Jr. Abtao — Huánuco';
-  const hours = profile.hours || 'Lunes a sábado de 9:00 a. m. a 8:00 p. m.';
+  const profile = { ...BUSINESS_CONFIG, ...(config.businessProfile || {}), ...(clinic || {}) };
+  const address = profile.address || 'Dirección no configurada';
+  const hours = profile.hours || 'Horario no configurado';
   const snapshot = session?.leadSnapshot;
   const patientName = snapshot?.nombre || extractLeadDataFromText(textFromHistory(session?.history))?.nombre;
   const booked = session?.booked ? '\nEsta sesión ya tiene una cita registrada. No vuelvas a pedir sus datos salvo que solicite cambios.' : '';
-  const systemPrompt = SYSTEM_PROMPT.replaceAll('[NOMBRE DE TU CLÍNICA]', profile.name || 'LUMINZU Clínica Dental');
-  return `${systemPrompt}\n\nDATOS ACTUALIZADOS:\n- Clínica: ${profile.name || 'LUMINZU Clínica Dental'}\n- Dirección: ${address}\n- Horario: ${hours}\n- Fecha y hora actual en Lima: ${limaNow()}\n- Número de WhatsApp del usuario: ${sessionId(jid)}\n  ${patientName ? `- Nombre del paciente ya proporcionado: ${patientName}` : ''}${snapshot ? `- Datos ya proporcionados: ${JSON.stringify(snapshot)}` : ''}${booked}`;
+  const systemPrompt = SYSTEM_PROMPT.replaceAll('[NOMBRE DEL NEGOCIO]', profile.name || 'nuestro negocio');
+  return `${systemPrompt}\n\nDATOS ACTUALIZADOS:\n- Negocio: ${profile.name || 'nuestro negocio'}\n- Dirección: ${address}\n- Horario: ${hours}\n- Fecha y hora actual: ${limaNow()}\n- Número de WhatsApp: ${sessionId(jid)}\n- WhatsApp ${sessionId(jid)}\n  ${patientName ? `- Nombre del paciente ya proporcionado: ${patientName}` : ''}${snapshot ? `- Datos ya proporcionados: ${JSON.stringify(snapshot)}` : ''}${booked}`;
 }
 
 export function parseTextToLimaDate(text) {
@@ -296,7 +294,7 @@ export function formatLimaFechaHoraText(iso) {
   if (!iso || Number.isNaN(new Date(iso).getTime())) return null;
   const date = new Intl.DateTimeFormat('es-PE', { timeZone: LIMA_TIME_ZONE, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso));
   const time = new Intl.DateTimeFormat('es-PE', { timeZone: LIMA_TIME_ZONE, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso));
-  return `${date}, ${time.replace(/\s*a\.?\s*m\.?/i, ' AM').replace(/\s*p\.?\s*m\.?/i, ' PM')}`;
+  return `${date.replace(',', '')}, ${time.replace(/\s*a\.?\s*m\.?/i, ' AM').replace(/\s*p\.?\s*m\.?/i, ' PM')}`;
 }
 
 function buildRequest(client, message, session, jid, options) {
@@ -363,20 +361,51 @@ async function callGemini(client, request, options) {
   throw lastError;
 }
 
-function collectLead(session, message, senderPhone = null) {
+function parseLeadJson(text) {
+  const block = String(text || '').match(/<<<LEAD_JSON>>>\s*([\s\S]*?)\s*<<<END_LEAD_JSON>>>/i);
+  if (!block) return null;
+  try {
+    const parsed = JSON.parse(block[1]);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      nombre: parsed.nombre || null,
+      telefono: parsed.telefono || parsed.phone || null,
+      distrito: parsed.distrito || parsed.district || null,
+      motivo: parsed.motivo || parsed.treatment || null,
+      fechaHora: parsed.fechaHora || parsed.fecha_hora_texto || parsed.fechaHoraTexto || parsed.fecha_hora || null,
+      ready_to_notify: parsed.ready_to_notify,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function collectLead(session, message, senderPhone = null, modelLead = null) {
   const current = extractLeadDataFromText(textFromHistory(session.history), senderPhone);
   const incoming = extractLeadDataFromText(message, senderPhone);
+  const responseLead = extractLeadDataFromText(modelLead?.rawText || '', senderPhone);
   const lead = {
-    nombre: incoming?.nombre || current?.nombre || session.leadSnapshot?.nombre || null,
-    telefono: incoming?.telefono || current?.telefono || session.leadSnapshot?.telefono || null,
-    motivo: incoming?.motivo || current?.motivo || session.leadSnapshot?.motivo || null,
-    fechaHora: incoming?.fechaHora || current?.fechaHora || session.leadSnapshot?.fecha_hora_texto || null,
+    nombre: modelLead?.nombre || incoming?.nombre || current?.nombre || session.leadSnapshot?.nombre || null,
+    telefono: modelLead?.telefono || incoming?.telefono || current?.telefono || responseLead?.telefono || session.leadSnapshot?.telefono || null,
+    distrito: session.leadSnapshot?.distrito || modelLead?.distrito || incoming?.distrito || current?.distrito || responseLead?.distrito || null,
+    motivo: modelLead?.motivo || incoming?.motivo || current?.motivo || responseLead?.motivo || session.leadSnapshot?.motivo || null,
+    fechaHora: modelLead?.fechaHora || incoming?.fechaHora || current?.fechaHora || responseLead?.fechaHora || session.leadSnapshot?.fecha_hora_texto || null,
   };
   if (lead.fechaHora) {
     lead.fechaHoraISO = parseTextToLimaISO(lead.fechaHora);
     if (lead.fechaHoraISO) lead.fechaHora = formatLimaFechaHoraText(lead.fechaHoraISO);
   }
-  lead.ready_to_notify = Boolean(isValidName(lead.nombre) && /^9\d{8}$/.test(lead.telefono || '') && lead.motivo && lead.fechaHoraISO);
+  lead.ready_to_notify = Boolean(
+    isValidName(lead.nombre)
+    && /^9\d{8}$/.test(String(lead.telefono || '').replace(/\D/g, ''))
+    && lead.distrito
+    && lead.fechaHoraISO
+    && (modelLead?.ready_to_notify !== false)
+  );
+  if (/\bdomingo\b/i.test(`${message} ${lead.fechaHora || ''}`)) {
+    lead.outsideClinicHours = true;
+    lead.ready_to_notify = false;
+  }
   return Object.values(lead).some(Boolean) ? lead : null;
 }
 
@@ -392,45 +421,25 @@ export function determinarCategoriaImagen(mensaje, respuestaIA) {
   ];
   if (exclusiones.some((pattern) => pattern.test(texto))) return null;
 
-  const mapeoTratamientos = [
-    { claves: ['bracket', 'brackets', 'ortodoncia', 'frenillos', 'frenos', 'invisalign'], categoria: 'ortodoncia' },
-    { claves: ['antes y despues', 'resultados ortodoncia', 'caso ortodoncia'], categoria: 'ortodoncia_1' },
-    { claves: ['implante', 'implantes'], categoria: 'implantes' },
-    { claves: ['limpieza', 'profilaxis', 'destartraje', 'sarro'], categoria: 'limpieza' },
-    { claves: ['kit preventivo', 'preventivo', 'kit dental', 'kit'], categoria: 'kit_preventivo' },
-    { claves: ['resina', 'resinas', 'curacion', 'curaciones', 'restauracion', 'restauración'], categoria: 'restauracion' },
-    { claves: ['carilla', 'carillas', 'diseño de sonrisa', 'sonrisa'], categoria: 'carillas' },
-    { claves: ['blanqueamiento', 'blanquear'], categoria: 'blanqueamiento' },
-    { claves: ['endodoncia', 'conducto'], categoria: 'endodoncia' },
-    { claves: ['odontopediatria', 'odontopediatría', 'niño', 'niños', 'bebe', 'hijo'], categoria: 'odontopediatria' },
-    { claves: ['protesis', 'prótesis', 'placa'], categoria: 'protesis' },
-    { claves: ['extraccion', 'extracción', 'muela del juicio', 'sacar muela'], categoria: 'extraccion' },
-    { claves: ['periodoncia', 'encia', 'encía', 'encias'], categoria: 'periodoncia' },
-    { claves: ['corona', 'coronas', 'funda'], categoria: 'corona' },
-    { claves: ['gingivectomia', 'gingivectomía'], categoria: 'gingivectomia' },
-    { claves: ['cuanto cuesta la evaluacion', 'costo de consulta', 'que incluye el chequeo', 'diagnostico', 'consulta inicial'], categoria: 'evaluacion' },
-    { claves: ['ubicacion', 'ubicados', 'ubicadas', 'sede', 'direccion', 'mapa', 'donde queda', 'donde quedan'], categoria: 'ubicacion' },
-    { claves: ['fachada', 'clinica', 'consultorio', 'instalaciones'], categoria: 'fachada' },
-  ];
-
-  for (const item of mapeoTratamientos) {
-    if (item.claves.some((clave) => texto.includes(clave))) {
-      return item.categoria;
+  for (const [categoria, claves] of Object.entries(CATALOG_DETECTION_RULES)) {
+    if (!catalog.some((item) => item.slug === categoria)) continue;
+    if (Array.isArray(claves) && claves.some((clave) => texto.includes(String(clave).toLowerCase()))) {
+      return categoria;
     }
+  }
+
+  // Custom catalogs can use their own keys without requiring service changes.
+  for (const item of catalog) {
+    const categoria = item.slug;
+    const key = categoria.toLowerCase().replace(/[_-]+/g, ' ');
+    if (key.length > 2 && texto.includes(key)) return categoria;
   }
 
   return null;
 }
 
 export function getImagenCategoria(categoria) {
-  if (!categoria) return null;
-  const valor = CATALOGO_LUMINZU[categoria] || CATALOGO_LUMINZU.default || CATALOGO_LUMINZU.tratamientos || null;
-  // Si la categoría tiene varias fotos (ej. casos antes/después), elige una al azar
-  // en vez de mandar siempre la primera — así no se repite la misma imagen cada vez.
-  if (Array.isArray(valor)) {
-    return valor[Math.floor(Math.random() * valor.length)];
-  }
-  return valor;
+  return categoria ? getCatalogMedia(categoria) : null;
 }
 
 export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
@@ -451,7 +460,9 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
   try {
     const result = await callGemini(options.client, buildRequest(options.client, messageText, session, jid, { ...options, messageParts }), options);
     const rawText = extractResultText(result);
-    const leadData = collectLead(session, messageText, sid);
+    const parsedLead = parseLeadJson(rawText) || {};
+    parsedLead.rawText = rawText;
+    const leadData = collectLead(session, messageText, sid, parsedLead);
     let texto = sanitizeModelTextOutput(rawText);
     if (!leadData?.ready_to_notify && !session.booked && /\b(?:tu cita|qued[oó]\s+agendada|ya est[aá]\s+agendada)\b/i.test(texto)) {
       texto = 'Para ayudarte a agendar, indícame tu nombre, teléfono, tratamiento y fecha o turno preferido. 😊📅';
@@ -475,15 +486,23 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
       scheduleCleanup(sid, session);
     }
 
-    return { texto, leadData, imagenURL, skipLeadPersistence: Boolean(options.skipLeadPersistence) };
+    return {
+      texto,
+      leadData,
+      imagenURL,
+      skipLeadPersistence: Boolean(options.skipLeadPersistence || session.booked),
+    };
   } catch (error) {
     const failures = (failureCounts.get(sid) || 0) + 1;
     failureCounts.set(sid, failures);
+    session.lastUserMessageAt = 0;
     return {
-      texto: null,
+      texto: failures >= 2
+        ? 'En este momento estamos un poco ocupados. Por favor, intenta nuevamente en unos minutos. 🙏'
+        : 'Disculpa, tuve una demora técnica. ¿Puedes intentar nuevamente, por favor? 🙏',
       leadData: null,
       imagenURL: null,
-      skipResponse: true,
+      skipResponse: false,
     };
   }
 }

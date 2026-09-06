@@ -4,7 +4,7 @@
 
 import fetch from 'node-fetch';
 
-const url = process.env.KEEPALIVE_URL || `https://bot-mensajes-dental.onrender.com/health`;
+const url = process.env.KEEPALIVE_URL || `${process.env.PUBLIC_BASE_URL || 'http://localhost:3000'}/health`;
 const intervalMs = Number(process.env.KEEPALIVE_INTERVAL_MS || 10 * 60 * 1000);
 
 async function ping() {

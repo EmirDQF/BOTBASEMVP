@@ -1,4 +1,4 @@
-import { CLINIC_NAME } from './catalogo.js';
+import { BUSINESS_CONFIG } from './catalogo.js';
 
 const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID || null;
 const webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
@@ -10,17 +10,13 @@ export default {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || null,
     model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    maxOutputTokens: Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 100),
+    maxOutputTokens: Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 110),
   },
-  clinicNameFallback: process.env.CLINIC_NAME_FALLBACK || 'nuestra clínica dental',
-  clinicProfile: {
-    name: process.env.CLINIC_NAME || process.env.CLINIC_NAME_FALLBACK || CLINIC_NAME,
-    address: process.env.CLINIC_ADDRESS
-      || process.env.DIRECCION_O_SEDES
-      || '📍 Av. Alameda de la República N° 261 - Huánuco',
-    hours: process.env.CLINIC_HOURS
-      || process.env.HORARIOS
-      || 'Lunes a sábado de 9:00 a. m. a 8:00 p. m.',
+  businessNameFallback: process.env.BUSINESS_NAME || 'nuestro negocio',
+  businessProfile: {
+    name: BUSINESS_CONFIG.name,
+    address: BUSINESS_CONFIG.address,
+    hours: BUSINESS_CONFIG.hours,
   },
   whatsapp: {
     token: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN || null,
