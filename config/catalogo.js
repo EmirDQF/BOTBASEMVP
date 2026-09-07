@@ -22,11 +22,11 @@ const parseList = (value, fallback = []) => {
 };
 
 export const businessInfo = Object.freeze({
-  name: process.env.BUSINESS_NAME || 'Empresa Demo',
-  industry: process.env.BUSINESS_INDUSTRY || 'Servicios',
-  city: process.env.BUSINESS_CITY || 'Ciudad Demo',
+  name: process.env.BUSINESS_NAME || 'CQPharma / Salud Articular',
+  industry: process.env.BUSINESS_INDUSTRY || 'Salud articular',
+  city: process.env.BUSINESS_CITY || 'Tu ciudad',
   address: process.env.BUSINESS_ADDRESS || 'Dirección no configurada',
-  hours: process.env.BUSINESS_HOURS || 'Horario no configurado',
+  hours: process.env.BUSINESS_HOURS || 'Lunes a sábado',
   contactPhone: process.env.BUSINESS_CONTACT_PHONE || '',
   contactPerson: process.env.BUSINESS_CONTACT_PERSON || '',
   advisorWhatsApp: process.env.ADMIN_WHATSAPP_NUMBER || '',
@@ -38,25 +38,36 @@ export const BUSINESS_CONFIG = businessInfo;
 const defaultCatalog = [
   {
     id: 'item_01',
-    name: 'Servicio principal',
-    slug: 'servicio-principal',
+    name: 'KOLFLEX (CQPharma)',
+    slug: 'kolflex',
     active: true,
-    keywords: ['servicio principal', 'servicio', 'información'],
-    description: 'Conoce los detalles de nuestro servicio principal.',
-    priceIndicator: 'A consultar',
-    mediaFile: 'demo_media_1.jpeg',
-    qualificationQuestions: ['¿Para cuándo necesitas este servicio?'],
+    keywords: ['1', 'kolflex', 'colageno', 'colágeno', 'dolor articular', 'rodilla', 'rodillas', 'cadera', 'columna'],
+    description: 'Colágeno hidrolizado premium con péptidos de alta absorción para acompañar el cuidado de las articulaciones.',
+    priceIndicator: 'Promociones disponibles',
+    mediaFile: null,
+    qualificationQuestions: ['¿Desde cuándo tienes molestias articulares?'],
   },
   {
     id: 'item_02',
-    name: 'Servicio secundario',
-    slug: 'servicio-secundario',
+    name: 'Consulta y densitometría ósea',
+    slug: 'densitometria-osea',
     active: true,
-    keywords: ['servicio secundario', 'opción secundaria'],
-    description: 'Una alternativa flexible para tus necesidades.',
+    keywords: ['2', 'densitometria', 'densitometría', 'densitometria osea', 'densitometría ósea', 'huesos', 'osteoporosis', 'consulta médica', 'sedes', 'horarios'],
+    description: 'Examen rápido e indoloro para evaluar la salud ósea y orientar una evaluación profesional.',
     priceIndicator: 'A consultar',
-    mediaFile: 'demo_media_2.jpeg',
-    qualificationQuestions: ['¿Has usado antes un servicio similar?'],
+    mediaFile: null,
+    qualificationQuestions: ['¿Qué ciudad o sede te queda más cerca?'],
+  },
+  {
+    id: 'item_03',
+    name: 'Consulta reumatológica / dolor articular',
+    slug: 'consulta-reumatologica',
+    active: true,
+    keywords: ['consulta reumatologica', 'consulta reumatológica', 'reumatologia', 'reumatología', 'dolor articular', 'evaluación', 'evaluacion'],
+    description: 'Evaluación preventiva y orientación profesional para dolores articulares.',
+    priceIndicator: 'A consultar',
+    mediaFile: null,
+    qualificationQuestions: ['¿Desde cuándo tienes el dolor articular?'],
   },
 ];
 
@@ -90,9 +101,9 @@ export const TREATMENT_IMAGES = Object.freeze(
 );
 
 export const conversationSettings = Object.freeze({
-  greeting: `¡Hola! 👋 Bienvenido/a a ${businessInfo.name}. ¿En qué servicio estás interesado?`,
-  fallbackMessage: 'No reconocí ese servicio. Estas son nuestras opciones:',
-  handoffMessage: 'Perfecto, una persona de nuestro equipo se comunicará contigo en breve.',
+  greeting: '¡Hola! Te damos la bienvenida a CQPharma Salud Articular 🌿. ¿En qué podemos ayudarte hoy?\n1️⃣ Información y promociones de Kolflex (Colágeno Hidrolizado)\n2️⃣ Densitometría ósea y consultas médicas por dolor\nEscribe 1 o 2 para ayudarte.',
+  fallbackMessage: 'Puedes escribir 1 para información de Kolflex o 2 para densitometría ósea y consultas por dolor.',
+  handoffMessage: '¡Excelente! Hemos registrado tus datos. En unos minutos un asesor se comunicará contigo para darte todos los detalles. ¡Que tengas un excelente día! 🌿',
 });
 
 export function getItemById(id) {
@@ -153,8 +164,16 @@ export const CATALOG_DETECTION_RULES = Object.freeze(
   Object.fromEntries(catalog.map((item) => [item.slug, item.keywords])),
 );
 
-export const SYSTEM_PROMPT = `Eres el asistente virtual de [NOMBRE DEL NEGOCIO]. Responde breve, amable y con información verificable.
-Prioriza responder exactamente lo que la persona pregunta e invita a avanzar solo cuando corresponda.
-Usa únicamente los servicios disponibles en el catálogo y nunca inventes citas, precios, profesionales ni servicios.`;
+export const SYSTEM_PROMPT = `Eres el Asistente Virtual Oficial de CQPharma / Salud Articular. Orientas con calidez a personas de 30 años o más interesadas en dolor articular, Kolflex o densitometría ósea.
+Responde en máximo 2 o 3 oraciones, sin tecnicismos ni diagnósticos definitivos, y deriva siempre a una evaluación profesional cuando corresponda. Cada respuesta debe terminar con una pregunta cerrada o llamado a la acción.
+
+Árbol de atención:
+- Sin contexto: usa el saludo configurado y pide escribir 1 o 2.
+- Kolflex, precio u opción 1: explica que es colágeno hidrolizado de alta absorción para acompañar el cuidado articular, menciona que hay promociones y solicita nombre y teléfono para que un asesor llame.
+- Densitometría, sedes, horarios u opción 2: indica que se realiza de lunes a sábado y solicita nombre y teléfono para agendar.
+- Dolor: expresa empatía, evita diagnosticar y solicita nombre y teléfono para orientación profesional.
+- Cuando la persona proporcione nombre o teléfono, confírmalos y comunica que un asesor le llamará en breve.
+
+Nunca inventes precios, citas, sedes ni resultados médicos.`;
 
 export default catalog;

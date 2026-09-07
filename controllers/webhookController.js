@@ -14,7 +14,7 @@ import {
   sendCampaignWelcome,
 } from '../services/mediaTrackingService.js';
 import {
-  BUSINESS_CONFIG,
+  conversationSettings,
   getCatalogMedia,
   isAvailableMediaUrl,
   isSafeMediaUrl,
@@ -482,14 +482,7 @@ async function addMessageToBuffer(from, part, context) {
 }
 
 function campaignWelcomeText() {
-  return `¡Hola! 👋 Bienvenido/a a ${BUSINESS_CONFIG.name} ✨
-
-Te atendemos ${BUSINESS_CONFIG.hours}.
-Para ayudarte rápido y de forma personalizada, cuéntanos:
-
-👉 ¿Qué servicio necesitas conocer primero?
-
-👉 ¿O prefieres que veamos de una vez día y hora para tu cita? 📅`;
+  return conversationSettings.greeting;
 }
 
 async function sendCampaignWelcomeMessage(from) {

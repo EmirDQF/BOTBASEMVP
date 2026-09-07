@@ -1,14 +1,23 @@
 import { BUSINESS_CONFIG } from './catalogo.js';
 
-const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID || null;
-const webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
-  || process.env.VERIFY_TOKEN
-  || process.env.WEBHOOK_VERIFY_TOKEN
-  || null;
+export const verifyToken = process.env.WEBHOOK_VERIFY_TOKEN
+  || process.env.META_VERIFY_TOKEN
+  || 'CQPHARMA_REUMA_2026';
+export const whatsappToken = process.env.WHATSAPP_TOKEN;
+export const phoneNumberId = process.env.PHONE_NUMBER_ID;
+export const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+export const supabaseUrl = process.env.SUPABASE_URL;
+export const supabaseKey = process.env.SUPABASE_KEY;
 
 export default {
+  verifyToken,
+  whatsappToken,
+  phoneNumberId,
+  geminiApiKey,
+  supabaseUrl,
+  supabaseKey,
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY || null,
+    apiKey: geminiApiKey || null,
     model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     maxOutputTokens: Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 110),
   },
@@ -19,14 +28,14 @@ export default {
     hours: BUSINESS_CONFIG.hours,
   },
   whatsapp: {
-    token: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN || null,
-    phoneNumberId,
+    token: whatsappToken || process.env.WHATSAPP_ACCESS_TOKEN || null,
+    phoneNumberId: phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || null,
     appSecret: process.env.WHATSAPP_APP_SECRET || null,
-    webhookVerifyToken,
+    webhookVerifyToken: verifyToken,
   },
   supabase: {
     url: process.env.SUPABASE_URL || null,
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey: supabaseKey || process.env.SUPABASE_SERVICE_ROLE_KEY
       || process.env.SUPABASE_SERVICE_ROLE
       || null,
   },
