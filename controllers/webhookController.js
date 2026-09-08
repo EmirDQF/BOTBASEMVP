@@ -29,22 +29,25 @@ function sendImageMessage(to, imageUrl, caption = '') {
 }
 
 export async function verifyWebhook(req, res) {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  const mode = req?.query?.['hub.mode'];
+  const token = req?.query?.['hub.verify_token'];
+  const challenge = req?.query?.['hub.challenge'];
   const expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
     || process.env.WEBHOOK_VERIFY_TOKEN;
 
   if (mode === 'subscribe' && token === expectedToken) {
-    return res.status(200).send(challenge);
+    return res?.status?.(200)?.send(challenge) ?? challenge;
   }
-  return res.sendStatus(403);
+  return res?.sendStatus?.(403) ?? null;
 }
 
-export async function handleWebhook(req, res) {
-  res.sendStatus(200);
+export async function handleWebhook(reqOrBody, maybeRes) {
+  const response = maybeRes || reqOrBody?.res;
+  if (response && typeof response.sendStatus === 'function' && !response.headersSent) {
+    response.sendStatus(200);
+  }
 
-  let body = req.body;
+  let body = reqOrBody?.body || reqOrBody;
   if (Buffer.isBuffer(body)) {
     try {
       body = JSON.parse(body.toString('utf8'));
