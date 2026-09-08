@@ -28,8 +28,8 @@ export const BUSINESS_CONFIG = businessInfo;
 export const menuPrincipal = `¡Hola! Bienvenido a *CQPharma* 🦴
 ¿En qué podemos ayudarle hoy?
 
-1️⃣ Agendar una cita médica
-2️⃣ Densitometría ósea (información y precio)
+1️⃣ Agendar una cita médica (S/ 30.00)
+2️⃣ Densitometría ósea (S/ 80.00)
 3️⃣ Joyflex One y Kolflex (productos articulares)
 4️⃣ Horarios y ubicación
 5️⃣ Hablar con un especialista (le llamamos en breve)
@@ -40,47 +40,47 @@ export const menuPrincipal = `¡Hola! Bienvenido a *CQPharma* 🦴
 export const catalog = Object.freeze([
   {
     id: 'item_01',
-    name: 'JOYFLEX ONE (Ácido Hialurónico Intraarticular)',
-    slug: 'joyflex_one',
+    name: 'Consulta Médica de Reumatología',
+    slug: 'consulta_reumatologia',
     active: true,
-    keywords: ['joyflex', 'joyflex one', 'infiltracion', 'infiltración', 'acido hialuronico', 'ácido hialurónico', 'gel', 'ampolla', 'lubricante'],
-    description: 'Infiltración médica directa en articulación. Como aceite para bisagras: quita la fricción y alivia el dolor de 3 a 12 meses en una sesión.',
-    priceIndicator: 'Consultar promoción vigente',
-    mediaFile: null,
-    qualificationQuestions: ['¿En qué articulación presenta dolor principalmente?'],
+    keywords: ['1', 'cita', 'consulta', 'reumatologo', 'reumatólogo', 'medico', 'médico', 'agendar', 'precio de consulta'],
+    description: 'Evaluación integral del dolor articular, artrosis, artritis y desgaste con especialista.',
+    priceIndicator: 'S/ 30.00',
+    mediaFile: 'agendatuconsulta.jpeg',
+    qualificationQuestions: ['¿Prefiere turno mañana (9AM-1PM) o tarde (2PM-5PM)?'],
   },
   {
     id: 'item_02',
-    name: 'KOLFLEX (Colágeno Hidrolizado Articular Reforzado)',
-    slug: 'kolflex',
-    active: true,
-    keywords: ['kolflex', 'colageno', 'colágeno', 'suplemento', 'bebible', 'rigidez', 'polvo', 'frasco', '3'],
-    description: 'Suplemento bebible diario que nutre el cartílago desde adentro y quita la rigidez matutina.',
-    priceIndicator: 'Consultar promoción vigente',
-    mediaFile: null,
-    qualificationQuestions: ['¿Siente rigidez en las mañanas al levantarse?'],
-  },
-  {
-    id: 'item_03',
     name: 'Densitometría Ósea Preventiva',
     slug: 'densitometria_osea',
     active: true,
     keywords: ['2', 'densitometria', 'densitometría', 'osteoporosis', 'calcio', 'huesos', 'descarte'],
-    description: 'Estudio rápido e indoloro que mide la densidad ósea para prevenir fracturas por osteoporosis a tiempo.',
+    description: 'Estudio rápido e indoloro que mide la densidad del hueso para prevenir fracturas por osteoporosis a tiempo.',
     priceIndicator: 'S/ 80.00',
     mediaFile: null,
-    qualificationQuestions: ['¿Se ha realizado antes un descarte de osteoporosis?'],
+    qualificationQuestions: ['¿Desea agendar en la mañana o en la tarde?'],
+  },
+  {
+    id: 'item_03',
+    name: 'KOLFLEX (Colágeno Hidrolizado Articular Reforzado)',
+    slug: 'kolflex',
+    active: true,
+    keywords: ['kolflex', 'colageno', 'colágeno', 'suplemento', 'bebible', 'rigidez', 'polvo', 'frasco', '3'],
+    description: 'Suplemento bebible diario que nutre y fortalece el cartílago desde adentro, quitando la rigidez matutina.',
+    priceIndicator: 'S/ 195.00',
+    mediaFile: null,
+    qualificationQuestions: ['¿Desea coordinar el envío a su domicilio?'],
   },
   {
     id: 'item_04',
-    name: 'Consulta Médica de Reumatología',
-    slug: 'consulta_reumatologia',
+    name: 'JOYFLEX ONE (Ácido Hialurónico Intraarticular)',
+    slug: 'joyflex_one',
     active: true,
-    keywords: ['1', 'cita', 'consulta', 'reumatologo', 'reumatólogo', 'medico', 'médico', 'agendar'],
-    description: 'Evaluación integral del dolor articular, artrosis, artritis y desgaste con especialista.',
-    priceIndicator: 'Consultar promoción vigente',
-    mediaFile: 'agendatuconsulta.jpeg',
-    qualificationQuestions: ['¿Prefiere turno mañana o tarde?'],
+    keywords: ['joyflex', 'joyflex one', 'infiltracion', 'infiltración', 'acido hialuronico', 'ácido hialurónico', 'gel', 'ampolla', 'lubricante'],
+    description: 'Infiltración directa en la articulación. Como aceite para bisagras: quita el roce de los huesos y alivia de 3 a 12 meses en una sola sesión.',
+    priceIndicator: 'S/ 450.00',
+    mediaFile: null,
+    qualificationQuestions: ['¿En qué articulación presenta dolor principalmente?'],
   },
   {
     id: 'item_05',
@@ -88,10 +88,10 @@ export const catalog = Object.freeze([
     slug: 'combo_articular',
     active: true,
     keywords: ['combo', 'tratamiento completo', 'ambos', 'paquete articular'],
-    description: 'Lubricación inmediata en consulta con Joyflex One + nutrición diaria continua con Kolflex.',
-    priceIndicator: 'Precio especial en combo',
+    description: 'Lubricación inmediata en consulta con Joyflex One + nutrición diaria continua en casa con Kolflex.',
+    priceIndicator: 'S/ 580.00 (precio promocional)',
     mediaFile: null,
-    qualificationQuestions: ['¿Desea entrega a domicilio o recoger en consulta?'],
+    qualificationQuestions: ['¿Desea coordinar el paquete completo?'],
   }
 ]);
 
@@ -147,11 +147,15 @@ export function isAvailableMediaUrl(value) {
 }
 
 export function getCatalogMedia(key, { requireLocalFile = true } = {}) {
-  const item = catalog.find((entry) => entry.slug === key || entry.id === key || entry.keywords.includes(key));
+  const item = catalog.find((entry) => entry.slug === key || entry.id === key || (Array.isArray(entry.keywords) && entry.keywords.includes(key)));
   const file = item?.mediaFile;
   if (!file) return null;
   const url = mediaUrl(file);
   return !requireLocalFile || isAvailableMediaUrl(url) ? url : null;
+}
+
+export function obtenerImagen(key) {
+  return getCatalogMedia(key);
 }
 
 export const BASE_URL = `${publicBaseUrl}/media/`;
