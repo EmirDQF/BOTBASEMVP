@@ -46,7 +46,7 @@ export const catalog = Object.freeze([
     keywords: ['1', 'cita', 'consulta', 'reumatologo', 'reumatólogo', 'medico', 'médico', 'agendar', 'precio de consulta'],
     description: 'Evaluación integral del dolor articular, artrosis, artritis y desgaste con especialista.',
     priceIndicator: 'S/ 30.00',
-    mediaFile: 'agendatuconsulta.jpeg',
+    mediaFile: null,
     qualificationQuestions: ['¿Prefiere turno mañana (9AM-1PM) o tarde (2PM-5PM)?'],
   },
   {

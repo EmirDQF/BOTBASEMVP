@@ -1,13 +1,14 @@
 import { BUSINESS_CONFIG } from './catalogo.js';
 
-export const verifyToken = process.env.WEBHOOK_VERIFY_TOKEN
+export const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+  || process.env.WEBHOOK_VERIFY_TOKEN
   || process.env.META_VERIFY_TOKEN
   || 'CQPHARMA_REUMA_2026';
 export const whatsappToken = process.env.WHATSAPP_TOKEN;
-export const phoneNumberId = process.env.PHONE_NUMBER_ID;
+export const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
 export const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 export const supabaseUrl = process.env.SUPABASE_URL;
-export const supabaseKey = process.env.SUPABASE_KEY;
+export const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 export default {
   verifyToken,
