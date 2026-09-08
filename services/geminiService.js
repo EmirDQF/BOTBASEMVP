@@ -26,8 +26,8 @@ REGLAS DE FORMATO (OBLIGATORIAS):
 - NUNCA termines una respuesta sin una pregunta de cierre por ALTERNATIVA (prohibido hacer preguntas abiertas tipo "¿cuándo puede?" o "¿en qué más le ayudo?").
 - Si el usuario saluda o escribe algo genérico/ambiguo, saluda cordialmente y muestra el menú principal:
   "¡Hola! Bienvenido a *CQPharma*. ¿En qué podemos ayudarle hoy?
-  1️⃣ Agendar una cita médica
-  2️⃣ Densitometría ósea (información y precio)
+  1️⃣ Agendar una cita médica (S/ 30.00)
+  2️⃣ Densitometría ósea (S/ 80.00)
   3️⃣ Productos articulares (Joyflex One y Kolflex)
   4️⃣ Información general y horarios
   5️⃣ Hablar con un especialista (en breve le llamamos)
@@ -44,6 +44,15 @@ INFORMACIÓN CLAVE Y ARGUMENTARIO:
 - KOLFLEX (colágeno hidrolizado bebible): Es el "alimento diario" que nutre el cartílago por dentro y quita la rigidez matutina.
 - Diferencia: NO son lo mismo, se complementan. Joyflex lubrica al instante en consulta; Kolflex nutre día a día en casa.
 - Combo Articular (Joyflex + Kolflex): Ofrécelo como upsell natural cuando pregunten por cualquiera de los dos.
+
+PRECIOS VIGENTES (usa EXACTAMENTE estos montos cuando pregunten por costos):
+- Consulta médica de Reumatología: S/ 30.00
+- Densitometría Ósea: S/ 80.00
+- Kolflex (Colágeno hidrolizado bebible): S/ 195.00
+- Joyflex One (Infiltración intraarticular): S/ 450.00
+- Combo Articular Completo (Joyflex One + Kolflex): S/ 580.00 (precio promocional)
+
+Si preguntan por un servicio o producto fuera de esta lista, indica amablemente que se evaluará en consulta médica y ofrece turno de atención.
 
 MANEJO DE OBJECIONES (aplícalo antes de dejar ir al paciente):
 - "Es muy caro": Compara el costo-beneficio frente a una cirugía/prótesis o el gasto recurrente en calmantes. Invita a la evaluación médica sin compromiso.
@@ -314,8 +323,8 @@ export function buildSystemPromptWithContext(jid, session = null, clinic = null)
   const patientName = snapshot?.nombre || extractLeadDataFromText(textFromHistory(session?.history))?.nombre;
   const booked = session?.booked ? '\nEsta sesión ya tiene una cita o pedido registrado. No vuelvas a pedir sus datos salvo que solicite cambios.' : '';
   const catalogList = Array.isArray(catalog) && catalog.length
-    ? catalog.filter((item) => item.active !== false).map((item) => `- ${item.slug}: ${item.name} (${item.description || ''})`).join('\n')
-    : '- joyflex_one: Infiltración de ácido hialurónico intraarticular\n- kolflex: Colágeno hidrolizado bebible';
+    ? catalog.filter((item) => item.active !== false).map((item) => `- ${item.slug}: ${item.name} (${item.description || ''}) - ${item.priceIndicator || ''}`).join('\n')
+    : '- joyflex_one: Infiltración de ácido hialurónico intraarticular (S/ 450.00)\n- kolflex: Colágeno hidrolizado bebible (S/ 195.00)';
 
   return `${SYSTEM_PROMPT}
 
@@ -382,7 +391,7 @@ Cliente: ${messageParts.filter((part) => part.type === 'text').map((part) => par
     let previousInputType = null;
     for (const part of messageParts) {
       if (part.type === 'image') {
-        parts.push({ inlineData: { mimeType: part.mimeType, data: part.base64Data } });
+        parts.push({ inlineData: { mimeType: part.mimeType, data: part.base4Data } });
         if (part.caption) parts.push({ text: part.caption });
         previousInputType = 'image';
       } else {
@@ -452,22 +461,37 @@ function collectLead(session, message, senderPhone = null, modelLead = null) {
   const current = extractLeadDataFromText(textFromHistory(session.history), senderPhone);
   const incoming = extractLeadDataFromText(message, senderPhone);
   const responseLead = extractLeadDataFromText(modelLead?.rawText || '', senderPhone);
+
+  const rawPhone = String(
+    modelLead?.telefono || incoming?.telefono || current?.telefono || responseLead?.telefono || session.leadSnapshot?.telefono || senderPhone || ''
+  ).replace(/\D/g, '');
+  const cleanPhone = rawPhone.startsWith('51') && rawPhone.length === 11 ? rawPhone.slice(2) : rawPhone;
+
   const lead = {
     nombre: modelLead?.nombre || incoming?.nombre || current?.nombre || session.leadSnapshot?.nombre || null,
-    telefono: modelLead?.telefono || incoming?.telefono || current?.telefono || responseLead?.telefono || session.leadSnapshot?.telefono || null,
+    telefono: cleanPhone || null,
     distrito: session.leadSnapshot?.distrito || modelLead?.distrito || incoming?.distrito || current?.distrito || responseLead?.distrito || null,
     motivo: modelLead?.motivo || incoming?.motivo || current?.motivo || responseLead?.motivo || session.leadSnapshot?.motivo || null,
     fechaHora: modelLead?.fechaHora || incoming?.fechaHora || current?.fechaHora || responseLead?.fechaHora || session.leadSnapshot?.fecha_hora_texto || null,
   };
+
   if (lead.fechaHora) {
     lead.fechaHoraISO = parseTextToLimaISO(lead.fechaHora);
     if (lead.fechaHoraISO) lead.fechaHora = formatLimaFechaHoraText(lead.fechaHoraISO);
   }
+
+  const hasUsableDateTime = Boolean(
+    (lead.fechaHoraISO && !isNaN(Date.parse(lead.fechaHoraISO))) ||
+    /(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|ma[ñn]ana|tarde|hoy|\d{1,2}\/\d{1,2})/i.test(String(lead.fechaHora || ''))
+  );
+
   lead.ready_to_notify = Boolean(
     isValidName(lead.nombre)
-    && /^9\d{8}$/.test(String(lead.telefono || '').replace(/\D/g, ''))
+    && /^9\d{8}$/.test(String(lead.telefono || ''))
+    && hasUsableDateTime
     && (modelLead?.ready_to_notify !== false)
   );
+
   if (/\bdomingo\b/i.test(`${message} ${lead.fechaHora || ''}`)) {
     lead.outsideClinicHours = true;
     lead.ready_to_notify = false;
@@ -534,18 +558,18 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
     if (hasPhone || hasName) {
       texto = '¡Excelente! Hemos registrado sus datos. En breve nuestro especialista se comunicará con usted. ¿Prefiere que le llamemos por la mañana o por la tarde?';
     } else if (normalized.includes('1') || normalized.includes('cita') || normalized.includes('agendar')) {
-      texto = 'Con gusto agendamos su consulta en Reumatología. ¿Prefiere atenderse en el turno mañana (9 AM–1 PM) o tarde (2 PM–5 PM)?';
+      texto = 'La consulta médica de Reumatología tiene un costo de S/ 30.00. ¿Prefiere atenderse en el turno mañana (9 AM–1 PM) o tarde (2 PM–5 PM)?';
     } else if (normalized.includes('2') || normalized.includes('densitometr') || normalized.includes('hueso')) {
-      texto = 'La densitometría ósea es un examen rápido e indoloro que mide el calcio de sus huesos para prevenir fracturas por osteoporosis. ¿Desea agendar su prueba en el turno mañana o tarde?';
+      texto = 'La densitometría ósea preventiva cuesta S/ 80.00; es rápida e indolora para prevenir fracturas por osteoporosis. ¿Desea agendar su prueba en el turno mañana o tarde?';
     } else if (normalized.includes('3') || normalized.includes('kolflex') || normalized.includes('joyflex') || normalized.includes('producto')) {
-      texto = 'Contamos con JOYFLEX ONE (lubrica la articulación en consulta) y KOLFLEX (colágeno que nutre y quita la rigidez diaria). ¿Desea reservar Joyflex One en consulta o coordinamos el envío de Kolflex a domicilio?';
+      texto = 'Kolflex (colágeno bebible diario) está S/ 195.00 y Joyflex One (infiltración en consulta) S/ 450.00 (Combo completo a S/ 580.00). ¿Desea coordinar el envío de Kolflex a domicilio o reservar su sesión de Joyflex One?';
     } else if (normalized.includes('5') || normalized.includes('especialista')) {
       texto = 'Con gusto le comunicamos con un especialista. Por favor indíquenos su nombre completo y número de teléfono para llamarle en breve.';
     } else {
-      texto = `¡Hola! Bienvenido a *CQPharma*, especialistas en Reumatología y Salud Articular 🌿.
-1️⃣ Agendar una cita médica
-2️⃣ Densitometría ósea (información y precio)
-3️⃣ Productos articulares (Joyflex One y Kolflex)
+      texto = `¡Hola! Bienvenido a *CQPharma*, especialistas en Reumatología y Salud Articular 🦴.
+1️⃣ Agendar una cita médica (S/ 30.00)
+2️⃣ Densitometría ósea preventiva (S/ 80.00)
+3️⃣ Productos articulares (Kolflex S/ 195.00 | Joyflex One S/ 450.00)
 4️⃣ Información general y horarios
 5️⃣ Hablar con un especialista
 6️⃣ Ver catálogo de productos
@@ -563,7 +587,7 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
     const leadData = collectLead(session, messageText, sid, parsedLead);
     let texto = sanitizeModelTextOutput(rawText);
     if (!leadData?.ready_to_notify && !session.booked && /\b(?:tu cita|qued[oó]\s+agendada|ya est[aá]\s+agendada)\b/i.test(texto)) {
-      texto = 'Para coordinar su cita médica, ¿prefiere atenderse en el turno mañana (9 AM–1 PM) o por la tarde (2 PM–5 PM)?';
+      texto = 'Para coordinar su cita médica (S/ 30.00), ¿prefiere atenderse en el turno mañana (9 AM–1 PM) o por la tarde (2 PM–5 PM)?';
     }
     session.history.push({ role: 'model', parts: [{ text: rawText || '' }] });
     session.history = compactHistoryForPrompt(session.history, MAX_HISTORY_MESSAGES);
