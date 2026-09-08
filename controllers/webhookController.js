@@ -93,6 +93,8 @@ export async function handleWebhook(req, res) {
   }
 }
 
+export const webhookController = handleWebhook;
+
 function enqueueUserMessage(sender, text) {
   let buffer = userBuffers.get(sender);
   if (!buffer) {
@@ -159,7 +161,4 @@ async function processBatch(sender) {
   }
 }
 
-export default {
-  verifyWebhook,
-  handleWebhook,
-};
+export default webhookController;
