@@ -10,100 +10,100 @@ const publicBaseUrl = (
 ).replace(/\/+$/, '');
 
 const mediaUrl = (file) => `${publicBaseUrl}/media/${file}`;
-const parseList = (value, fallback = []) => {
-  if (!value) return [...fallback];
-  try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
-  } catch {
-    // Comma-separated values are also supported for simple deployments.
-  }
-  return String(value).split(',').map((item) => item.trim()).filter(Boolean);
-};
 
 export const businessInfo = Object.freeze({
-  name: process.env.BUSINESS_NAME || 'CQPharma / Salud Articular',
-  industry: process.env.BUSINESS_INDUSTRY || 'Salud articular',
-  city: process.env.BUSINESS_CITY || 'Tu ciudad',
+  name: process.env.BUSINESS_NAME || 'CQPharma',
+  industry: process.env.BUSINESS_INDUSTRY || 'Reumatología y Salud Articular',
+  city: process.env.BUSINESS_CITY || 'Lima',
   address: process.env.BUSINESS_ADDRESS || 'Dirección no configurada',
-  hours: process.env.BUSINESS_HOURS || 'Lunes a sábado',
+  hours: process.env.BUSINESS_HOURS || 'Lunes a Sábado de 9:00 AM a 5:00 PM',
   contactPhone: process.env.BUSINESS_CONTACT_PHONE || '',
-  contactPerson: process.env.BUSINESS_CONTACT_PERSON || '',
+  contactPerson: process.env.BUSINESS_CONTACT_PERSON || 'Especialistas en Reumatología',
   advisorWhatsApp: process.env.ADMIN_WHATSAPP_NUMBER || '',
   bookingUrl: process.env.BOOKING_URL || '',
 });
 
 export const BUSINESS_CONFIG = businessInfo;
 
-const defaultCatalog = [
+export const menuPrincipal = `¡Hola! Bienvenido a *CQPharma* 🦴
+¿En qué podemos ayudarle hoy?
+
+1️⃣ Agendar una cita médica
+2️⃣ Densitometría ósea (información y precio)
+3️⃣ Joyflex One y Kolflex (productos articulares)
+4️⃣ Horarios y ubicación
+5️⃣ Hablar con un especialista (le llamamos en breve)
+6️⃣ Ver catálogo completo
+
+*Escriba el número o cuénteme directamente su molestia.*`;
+
+export const catalog = Object.freeze([
   {
     id: 'item_01',
-    name: 'KOLFLEX (CQPharma)',
-    slug: 'kolflex',
+    name: 'JOYFLEX ONE (Ácido Hialurónico Intraarticular)',
+    slug: 'joyflex_one',
     active: true,
-    keywords: ['1', 'kolflex', 'colageno', 'colágeno', 'dolor articular', 'rodilla', 'rodillas', 'cadera', 'columna'],
-    description: 'Colágeno hidrolizado premium con péptidos de alta absorción para acompañar el cuidado de las articulaciones.',
-    priceIndicator: 'Promociones disponibles',
+    keywords: ['joyflex', 'joyflex one', 'infiltracion', 'infiltración', 'acido hialuronico', 'ácido hialurónico', 'gel', 'ampolla', 'lubricante'],
+    description: 'Infiltración médica directa en articulación. Como aceite para bisagras: quita la fricción y alivia el dolor de 3 a 12 meses en una sesión.',
+    priceIndicator: 'Consultar promoción vigente',
     mediaFile: null,
-    qualificationQuestions: ['¿Desde cuándo tienes molestias articulares?'],
+    qualificationQuestions: ['¿En qué articulación presenta dolor principalmente?'],
   },
   {
     id: 'item_02',
-    name: 'Consulta y densitometría ósea',
-    slug: 'densitometria-osea',
+    name: 'KOLFLEX (Colágeno Hidrolizado Articular Reforzado)',
+    slug: 'kolflex',
     active: true,
-    keywords: ['2', 'densitometria', 'densitometría', 'densitometria osea', 'densitometría ósea', 'huesos', 'osteoporosis', 'consulta médica', 'sedes', 'horarios'],
-    description: 'Examen rápido e indoloro para evaluar la salud ósea y orientar una evaluación profesional.',
-    priceIndicator: 'A consultar',
+    keywords: ['kolflex', 'colageno', 'colágeno', 'suplemento', 'bebible', 'rigidez', 'polvo', 'frasco', '3'],
+    description: 'Suplemento bebible diario que nutre el cartílago desde adentro y quita la rigidez matutina.',
+    priceIndicator: 'Consultar promoción vigente',
     mediaFile: null,
-    qualificationQuestions: ['¿Qué ciudad o sede te queda más cerca?'],
+    qualificationQuestions: ['¿Siente rigidez en las mañanas al levantarse?'],
   },
   {
     id: 'item_03',
-    name: 'Consulta reumatológica / dolor articular',
-    slug: 'consulta-reumatologica',
+    name: 'Densitometría Ósea Preventiva',
+    slug: 'densitometria_osea',
     active: true,
-    keywords: ['consulta reumatologica', 'consulta reumatológica', 'reumatologia', 'reumatología', 'dolor articular', 'evaluación', 'evaluacion'],
-    description: 'Evaluación preventiva y orientación profesional para dolores articulares.',
-    priceIndicator: 'A consultar',
+    keywords: ['2', 'densitometria', 'densitometría', 'osteoporosis', 'calcio', 'huesos', 'descarte'],
+    description: 'Estudio rápido e indoloro que mide la densidad ósea para prevenir fracturas por osteoporosis a tiempo.',
+    priceIndicator: 'S/ 80.00',
     mediaFile: null,
-    qualificationQuestions: ['¿Desde cuándo tienes el dolor articular?'],
+    qualificationQuestions: ['¿Se ha realizado antes un descarte de osteoporosis?'],
   },
-];
-
-function parseCatalog() {
-  if (!process.env.BUSINESS_CATALOG) return defaultCatalog;
-  try {
-    const parsed = JSON.parse(process.env.BUSINESS_CATALOG);
-    if (!Array.isArray(parsed) || !parsed.length) throw new Error('BUSINESS_CATALOG must be a non-empty array');
-    return parsed.map((item, index) => ({
-      id: item.id || `item_${String(index + 1).padStart(2, '0')}`,
-      name: String(item.name || `Servicio ${index + 1}`),
-      slug: String(item.slug || `servicio-${index + 1}`),
-      active: item.active !== false,
-      keywords: Array.isArray(item.keywords) ? item.keywords.map(String) : [],
-      description: String(item.description || ''),
-      priceIndicator: String(item.priceIndicator || 'A consultar'),
-      mediaFile: item.mediaFile ? String(item.mediaFile) : null,
-      qualificationQuestions: Array.isArray(item.qualificationQuestions)
-        ? item.qualificationQuestions.map(String)
-        : [],
-    }));
-  } catch (error) {
-    throw new Error(`Invalid BUSINESS_CATALOG: ${error.message}`);
+  {
+    id: 'item_04',
+    name: 'Consulta Médica de Reumatología',
+    slug: 'consulta_reumatologia',
+    active: true,
+    keywords: ['1', 'cita', 'consulta', 'reumatologo', 'reumatólogo', 'medico', 'médico', 'agendar'],
+    description: 'Evaluación integral del dolor articular, artrosis, artritis y desgaste con especialista.',
+    priceIndicator: 'Consultar promoción vigente',
+    mediaFile: 'agendatuconsulta.jpeg',
+    qualificationQuestions: ['¿Prefiere turno mañana o tarde?'],
+  },
+  {
+    id: 'item_05',
+    name: 'Combo Articular Completo (Joyflex One + Kolflex)',
+    slug: 'combo_articular',
+    active: true,
+    keywords: ['combo', 'tratamiento completo', 'ambos', 'paquete articular'],
+    description: 'Lubricación inmediata en consulta con Joyflex One + nutrición diaria continua con Kolflex.',
+    priceIndicator: 'Precio especial en combo',
+    mediaFile: null,
+    qualificationQuestions: ['¿Desea entrega a domicilio o recoger en consulta?'],
   }
-}
+]);
 
-export const catalog = Object.freeze(parseCatalog());
 export const CATALOGO = catalog;
-export const TREATMENT_IMAGES = Object.freeze(
-  Object.fromEntries(catalog.filter((item) => item.mediaFile).map((item) => [item.slug, mediaUrl(item.mediaFile)])),
+export const CATALOG_DETECTION_RULES = Object.freeze(
+  Object.fromEntries(catalog.map((item) => [item.slug, item.keywords]))
 );
 
 export const conversationSettings = Object.freeze({
-  greeting: '¡Hola! Te damos la bienvenida a CQPharma Salud Articular 🌿. ¿En qué podemos ayudarte hoy?\n1️⃣ Información y promociones de Kolflex (Colágeno Hidrolizado)\n2️⃣ Densitometría ósea y consultas médicas por dolor\nEscribe 1 o 2 para ayudarte.',
-  fallbackMessage: 'Puedes escribir 1 para información de Kolflex o 2 para densitometría ósea y consultas por dolor.',
-  handoffMessage: '¡Excelente! Hemos registrado tus datos. En unos minutos un asesor se comunicará contigo para darte todos los detalles. ¡Que tengas un excelente día! 🌿',
+  greeting: menuPrincipal,
+  fallbackMessage: 'Por favor, elija una opción del 1 al 6 o cuénteme en qué articulación siente dolor.',
+  handoffMessage: '¡Excelente! Hemos registrado sus datos. En breves minutos un especialista médico se comunicará con usted.',
 });
 
 export function getItemById(id) {
@@ -154,26 +154,9 @@ export function getCatalogMedia(key, { requireLocalFile = true } = {}) {
   return !requireLocalFile || isAvailableMediaUrl(url) ? url : null;
 }
 
-export function obtenerImagen(key) {
-  return getCatalogMedia(key);
-}
-
 export const BASE_URL = `${publicBaseUrl}/media/`;
-export const SERVICIOS = Object.freeze({});
-export const CATALOG_DETECTION_RULES = Object.freeze(
-  Object.fromEntries(catalog.map((item) => [item.slug, item.keywords])),
+export const TREATMENT_IMAGES = Object.freeze(
+  Object.fromEntries(catalog.filter((item) => item.mediaFile).map((item) => [item.slug, mediaUrl(item.mediaFile)]))
 );
-
-export const SYSTEM_PROMPT = `Eres el Asistente Virtual Oficial de CQPharma / Salud Articular. Orientas con calidez a personas de 30 años o más interesadas en dolor articular, Kolflex o densitometría ósea.
-Responde en máximo 2 o 3 oraciones, sin tecnicismos ni diagnósticos definitivos, y deriva siempre a una evaluación profesional cuando corresponda. Cada respuesta debe terminar con una pregunta cerrada o llamado a la acción.
-
-Árbol de atención:
-- Sin contexto: usa el saludo configurado y pide escribir 1 o 2.
-- Kolflex, precio u opción 1: explica que es colágeno hidrolizado de alta absorción para acompañar el cuidado articular, menciona que hay promociones y solicita nombre y teléfono para que un asesor llame.
-- Densitometría, sedes, horarios u opción 2: indica que se realiza de lunes a sábado y solicita nombre y teléfono para agendar.
-- Dolor: expresa empatía, evita diagnosticar y solicita nombre y teléfono para orientación profesional.
-- Cuando la persona proporcione nombre o teléfono, confírmalos y comunica que un asesor le llamará en breve.
-
-Nunca inventes precios, citas, sedes ni resultados médicos.`;
 
 export default catalog;

@@ -3,7 +3,6 @@ import {
   BUSINESS_CONFIG,
   CATALOG_DETECTION_RULES,
   catalog,
-  SYSTEM_PROMPT as CATALOG_SYSTEM_PROMPT,
   getCatalogMedia,
 } from '../config/catalogo.js';
 
@@ -12,19 +11,74 @@ const SESSION_TTL_MS = Number(process.env.GEMINI_SESSION_TTL_MS || 30 * 60 * 100
 const BOOKED_TTL_MS = Number(process.env.GEMINI_BOOKED_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000);
 const DEBOUNCE_MS = Number(process.env.GEMINI_DEBOUNCE_MS || 2000);
 const MAX_HISTORY_MESSAGES = Number(process.env.GEMINI_MAX_HISTORY || 6);
-const MAX_OUTPUT_TOKENS = 300;
+const MAX_OUTPUT_TOKENS = 350;
 const CLEANUP_MS = Number(process.env.GEMINI_CLEANUP_MS || 60 * 1000);
-export const SYSTEM_PROMPT = `${CATALOG_SYSTEM_PROMPT.replace('[NOMBRE DEL NEGOCIO]', BUSINESS_CONFIG.name)}
 
-El saludo inicial ya fue entregado al usuario y no debe repetirse. Resuelve brevemente la duda e invita a avanzar cuando corresponda. Si desea agendar, solicita nombre completo, servicio de interés y día y rango de hora preferido. No inventes una cita ni datos que la persona no haya confirmado.
+export const SYSTEM_PROMPT = `
+Eres el asistente virtual comercial de "CQPharma", centro especializado en Reumatología y Salud Articular.
+OBJETIVO ÚNICO: Resolver dudas en pocas palabras y CERRAR (cita agendada o pedido confirmado) en el menor número de mensajes posible.
 
-Reglas:
-- Máximo 2-3 oraciones cortas y 1-2 emojis por mensaje.
-- Si la persona consulta por un servicio del catálogo, puedes incluir al final la etiqueta [ENVIAR_IMAGEN:categoria] usando una categoría válida.
-- No envíes una imagen para preguntas generales, saludos, horarios o formas de pago.
+PÚBLICO OBJETIVO:
+Adultos de 40 a 60+ años con dolor articular o rigidez. Lenguaje cotidiano, cálido, empático, sin tecnicismos complejos.
 
-Catálogo disponible:
-${catalog.filter((item) => item.active !== false).map((item) => `- ${item.slug}: ${item.name} (${item.description})`).join('\n')}`;
+REGLAS DE FORMATO (OBLIGATORIAS):
+- Máximo 2 a 3 párrafos cortos por respuesta.
+- NUNCA termines una respuesta sin una pregunta de cierre por ALTERNATIVA (prohibido hacer preguntas abiertas tipo "¿cuándo puede?" o "¿en qué más le ayudo?").
+- Si el usuario saluda o escribe algo genérico/ambiguo, saluda cordialmente y muestra el menú principal:
+  "¡Hola! Bienvenido a *CQPharma*. ¿En qué podemos ayudarle hoy?
+  1️⃣ Agendar una cita médica
+  2️⃣ Densitometría ósea (información y precio)
+  3️⃣ Productos articulares (Joyflex One y Kolflex)
+  4️⃣ Información general y horarios
+  5️⃣ Hablar con un especialista (en breve le llamamos)
+  6️⃣ Ver catálogo de productos
+
+  ¿Desea agendar una cita o prefiere consultar por nuestros productos?"
+- Si escribe fuera de tema, responde en una línea educada y redirige al menú.
+- Reconoce números (1, 2, 3...) y lenguaje natural ("me duele la rodilla al subir gradas" = interés en consulta y Joyflex One).
+
+INFORMACIÓN CLAVE Y ARGUMENTARIO:
+- Horario de atención: Lunes a Sábado, de 9:00 AM a 5:00 PM.
+- Densitometría ósea: Examen rápido e indoloro que mide el calcio de los huesos para prevenir fracturas por osteoporosis a tiempo.
+- JOYFLEX ONE (infiltración intraarticular): Funciona como "aceite para bisagras". Se aplica directo en la articulación para evitar el roce entre huesos; brinda alivio prolongado de 3 a 12 meses.
+- KOLFLEX (colágeno hidrolizado bebible): Es el "alimento diario" que nutre el cartílago por dentro y quita la rigidez matutina.
+- Diferencia: NO son lo mismo, se complementan. Joyflex lubrica al instante en consulta; Kolflex nutre día a día en casa.
+- Combo Articular (Joyflex + Kolflex): Ofrécelo como upsell natural cuando pregunten por cualquiera de los dos.
+
+MANEJO DE OBJECIONES (aplícalo antes de dejar ir al paciente):
+- "Es muy caro": Compara el costo-beneficio frente a una cirugía/prótesis o el gasto recurrente en calmantes. Invita a la evaluación médica sin compromiso.
+- "Lo voy a pensar": Recuérdale que agendar la evaluación no exige pago inmediato y asegura su turno.
+- "¿Funciona de verdad?": Explica que es un tratamiento médico aplicado por especialistas con alto índice de satisfacción, invitándolo a consulta para evaluar su caso.
+
+PREGUNTAS DE CIERRE POR ALTERNATIVA (Elige la que corresponda):
+- Si consulta por Dolor / Cita / Densitometría:
+  "¿Le acomoda mejor atenderse en el turno mañana (9 AM a 1 PM) o por la tarde (2 PM a 5 PM)?"
+- Si consulta por Productos:
+  "¿Desea reservar su aplicación de Joyflex One en consulta o coordinamos el envío de su Kolflex a domicilio?"
+- Si muestra interés en ambos:
+  "¿Coordinamos el combo completo con envío a domicilio o prefiere aplicarse Joyflex en su próxima visita médica?"
+- Opción 5 (Hablar con especialista):
+  Pide ÚNICAMENTE Nombre completo y Teléfono confirmando que el área médica lo llamará pronto.
+
+HERRAMIENTAS DEL SISTEMA (Etiquetas):
+- Si el paciente consulta por un producto o servicio del catálogo y deseas enviar foto de apoyo, añade al final: [ENVIAR_IMAGEN:categoria]
+- Cuando el paciente confirme sus datos y turno, genera al final del mensaje el bloque:
+<<<LEAD_JSON>>>
+{
+  "nombre": "Nombre del paciente o null",
+  "telefono": "Teléfono o null",
+  "distrito": "Distrito o null",
+  "motivo": "Consulta / Densitometría / Joyflex / Kolflex",
+  "fechaHora": "Día y turno preferido",
+  "ready_to_notify": true
+}
+<<<END_LEAD_JSON>>>
+
+PROHIBICIONES:
+- Prohibido dar diagnósticos médicos definitivos por chat.
+- Prohibido inventar precios o promociones inexistentes.
+- Prohibido terminar con preguntas abiertas.
+`;
 
 const chatSessions = new Map();
 const failureCounts = new Map();
@@ -178,7 +232,7 @@ export function extractLeadDataFromText(text, senderPhone = null) {
 
   const dateMatch = text.match(/\b(?:hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado)(?:\s+\d{1,2}\s+de\s+[a-záéíóú]+)?(?:\s+(?:a\s*las?\s*)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?/i)
     || text.match(/\b\d{1,2}\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:a\s*las?\s*)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?/i);
-  const motivoMatch = text.match(/\b(?:tratamiento|motivo)\s*(?:es|:)?\s*([^,.\n]+)/i);
+  const motivoMatch = text.match(/\b(?:tratamiento|motivo|producto)\s*(?:es|:)?\s*([^,.\n]+)/i);
   const districtMatch = text.match(/\b(?:vivo|estoy|resido)\s+en\s+([^,.\n]+)/i);
 
   return {
@@ -242,7 +296,7 @@ export function sanitizeModelTextOutput(rawText) {
         .replace(/^\s*\{\s*"(?:response|respuesta|texto|text|message)"\s*:\s*"([\s\S]*)$/i, '$1');
     }
   }
-  return text.replace(/[*_]/g, '').replace(/\s+/g, ' ').trim();
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 function limaNow() {
@@ -254,13 +308,27 @@ function limaNow() {
 
 export function buildSystemPromptWithContext(jid, session = null, clinic = null) {
   const profile = { ...BUSINESS_CONFIG, ...(config.businessProfile || {}), ...(clinic || {}) };
-  const address = profile.address || 'Dirección no configurada';
-  const hours = profile.hours || 'Horario no configurado';
+  const address = profile.address || 'Dirección de CQPharma';
+  const hours = profile.hours || 'Lunes a Sábado de 9:00 AM a 5:00 PM';
   const snapshot = session?.leadSnapshot;
   const patientName = snapshot?.nombre || extractLeadDataFromText(textFromHistory(session?.history))?.nombre;
-  const booked = session?.booked ? '\nEsta sesión ya tiene una cita registrada. No vuelvas a pedir sus datos salvo que solicite cambios.' : '';
-  const systemPrompt = SYSTEM_PROMPT.replaceAll('[NOMBRE DEL NEGOCIO]', profile.name || 'nuestro negocio');
-  return `${systemPrompt}\n\nDATOS ACTUALIZADOS:\n- Negocio: ${profile.name || 'nuestro negocio'}\n- Dirección: ${address}\n- Horario: ${hours}\n- Fecha y hora actual: ${limaNow()}\n- Número de WhatsApp: ${sessionId(jid)}\n- WhatsApp ${sessionId(jid)}\n  ${patientName ? `- Nombre del paciente ya proporcionado: ${patientName}` : ''}${snapshot ? `- Datos ya proporcionados: ${JSON.stringify(snapshot)}` : ''}${booked}`;
+  const booked = session?.booked ? '\nEsta sesión ya tiene una cita o pedido registrado. No vuelvas a pedir sus datos salvo que solicite cambios.' : '';
+  const catalogList = Array.isArray(catalog) && catalog.length
+    ? catalog.filter((item) => item.active !== false).map((item) => `- ${item.slug}: ${item.name} (${item.description || ''})`).join('\n')
+    : '- joyflex_one: Infiltración de ácido hialurónico intraarticular\n- kolflex: Colágeno hidrolizado bebible';
+
+  return `${SYSTEM_PROMPT}
+
+CATÁLOGO ACTIVO:
+${catalogList}
+
+DATOS ACTUALES DEL ENTORNO:
+- Empresa: ${profile.name || 'CQPharma'}
+- Dirección: ${address}
+- Horario: ${hours}
+- Fecha y hora actual (Lima): ${limaNow()}
+- WhatsApp del cliente: ${sessionId(jid)}
+${patientName ? `- Nombre registrado del cliente: ${patientName}` : ''}${snapshot ? `- Datos previos: ${JSON.stringify(snapshot)}` : ''}${booked}`;
 }
 
 export function parseTextToLimaDate(text) {
@@ -398,8 +466,6 @@ function collectLead(session, message, senderPhone = null, modelLead = null) {
   lead.ready_to_notify = Boolean(
     isValidName(lead.nombre)
     && /^9\d{8}$/.test(String(lead.telefono || '').replace(/\D/g, ''))
-    && lead.distrito
-    && lead.fechaHoraISO
     && (modelLead?.ready_to_notify !== false)
   );
   if (/\bdomingo\b/i.test(`${message} ${lead.fechaHora || ''}`)) {
@@ -421,18 +487,18 @@ export function determinarCategoriaImagen(mensaje, respuestaIA) {
   ];
   if (exclusiones.some((pattern) => pattern.test(texto))) return null;
 
-  for (const [categoria, claves] of Object.entries(CATALOG_DETECTION_RULES)) {
-    if (!catalog.some((item) => item.slug === categoria)) continue;
+  for (const [categoria, claves] of Object.entries(CATALOG_DETECTION_RULES || {})) {
     if (Array.isArray(claves) && claves.some((clave) => texto.includes(String(clave).toLowerCase()))) {
       return categoria;
     }
   }
 
-  // Custom catalogs can use their own keys without requiring service changes.
-  for (const item of catalog) {
-    const categoria = item.slug;
-    const key = categoria.toLowerCase().replace(/[_-]+/g, ' ');
-    if (key.length > 2 && texto.includes(key)) return categoria;
+  if (Array.isArray(catalog)) {
+    for (const item of catalog) {
+      const categoria = item.slug;
+      const key = categoria.toLowerCase().replace(/[_-]+/g, ' ');
+      if (key.length > 2 && texto.includes(key)) return categoria;
+    }
   }
 
   return null;
@@ -457,6 +523,38 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
   const messageText = messageParts.filter((part) => part.type === 'text').map((part) => part.content).join('\n');
   session.history.push({ role: 'user', parts: [{ text: messageText }], at: now });
   session.history = compactHistoryForPrompt(session.history, MAX_HISTORY_MESSAGES);
+
+  // Fallback directo si Gemini no está instanciado
+  if (!options.client) {
+    const normalized = messageText.toLowerCase();
+    const hasPhone = /(?:\+?51)?\s*9\d{8}\b/.test(messageText);
+    const hasName = isValidName(extractLeadDataFromText(messageText)?.nombre);
+
+    let texto = '';
+    if (hasPhone || hasName) {
+      texto = '¡Excelente! Hemos registrado sus datos. En breve nuestro especialista se comunicará con usted. ¿Prefiere que le llamemos por la mañana o por la tarde?';
+    } else if (normalized.includes('1') || normalized.includes('cita') || normalized.includes('agendar')) {
+      texto = 'Con gusto agendamos su consulta en Reumatología. ¿Prefiere atenderse en el turno mañana (9 AM–1 PM) o tarde (2 PM–5 PM)?';
+    } else if (normalized.includes('2') || normalized.includes('densitometr') || normalized.includes('hueso')) {
+      texto = 'La densitometría ósea es un examen rápido e indoloro que mide el calcio de sus huesos para prevenir fracturas por osteoporosis. ¿Desea agendar su prueba en el turno mañana o tarde?';
+    } else if (normalized.includes('3') || normalized.includes('kolflex') || normalized.includes('joyflex') || normalized.includes('producto')) {
+      texto = 'Contamos con JOYFLEX ONE (lubrica la articulación en consulta) y KOLFLEX (colágeno que nutre y quita la rigidez diaria). ¿Desea reservar Joyflex One en consulta o coordinamos el envío de Kolflex a domicilio?';
+    } else if (normalized.includes('5') || normalized.includes('especialista')) {
+      texto = 'Con gusto le comunicamos con un especialista. Por favor indíquenos su nombre completo y número de teléfono para llamarle en breve.';
+    } else {
+      texto = `¡Hola! Bienvenido a *CQPharma*, especialistas en Reumatología y Salud Articular 🌿.
+1️⃣ Agendar una cita médica
+2️⃣ Densitometría ósea (información y precio)
+3️⃣ Productos articulares (Joyflex One y Kolflex)
+4️⃣ Información general y horarios
+5️⃣ Hablar con un especialista
+6️⃣ Ver catálogo de productos
+
+¿Desea agendar una cita o prefiere consultar por nuestros productos articulares?`;
+    }
+    return { texto, leadData: collectLead(session, messageText, sid), imagenURL: null, skipResponse: false };
+  }
+
   try {
     const result = await callGemini(options.client, buildRequest(options.client, messageText, session, jid, { ...options, messageParts }), options);
     const rawText = extractResultText(result);
@@ -465,7 +563,7 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
     const leadData = collectLead(session, messageText, sid, parsedLead);
     let texto = sanitizeModelTextOutput(rawText);
     if (!leadData?.ready_to_notify && !session.booked && /\b(?:tu cita|qued[oó]\s+agendada|ya est[aá]\s+agendada)\b/i.test(texto)) {
-      texto = 'Para ayudarte a agendar, indícame tu nombre, teléfono, tratamiento y fecha o turno preferido. 😊📅';
+      texto = 'Para coordinar su cita médica, ¿prefiere atenderse en el turno mañana (9 AM–1 PM) o por la tarde (2 PM–5 PM)?';
     }
     session.history.push({ role: 'model', parts: [{ text: rawText || '' }] });
     session.history = compactHistoryForPrompt(session.history, MAX_HISTORY_MESSAGES);
@@ -498,8 +596,8 @@ export async function obtenerRespuestaIA(jid, mensaje, options = {}) {
     session.lastUserMessageAt = 0;
     return {
       texto: failures >= 2
-        ? 'En este momento estamos un poco ocupados. Por favor, intenta nuevamente en unos minutos. 🙏'
-        : 'Disculpa, tuve una demora técnica. ¿Puedes intentar nuevamente, por favor? 🙏',
+        ? 'En este momento nuestros asesores están en atención. Por favor, intente nuevamente en unos minutos. 🙏'
+        : 'Disculpe la demora técnica. ¿Prefiere que le ayudemos agendando una cita o con información de productos? 🙏',
       leadData: null,
       imagenURL: null,
       skipResponse: false,

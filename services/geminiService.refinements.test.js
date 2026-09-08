@@ -16,7 +16,7 @@ describe('geminiService refinements', () => {
   it('replaces business name placeholders with a generic fallback', async () => {
     const prompt = geminiService.buildSystemPromptWithContext('51900000000@s.whatsapp.net', null, null);
     assert.ok(!prompt.includes('[NOMBRE_CLINICA]'));
-    assert.ok(prompt.includes('Empresa Demo'));
+    assert.ok(prompt.includes('CQPharma'));
   });
 
   it('injects confirmed patient name into prompt and removes [NOMBRE_PACIENTE]', async () => {
@@ -31,9 +31,9 @@ describe('geminiService refinements', () => {
     const prompt = geminiService.buildSystemPromptWithContext(
       '51900000009@s.whatsapp.net',
       null,
-      { name: 'Empresa Demo', address: 'Calle 1', hours: 'Lunes a viernes' },
+      { name: 'Negocio Demo', address: 'Calle 1', hours: 'Lunes a viernes' },
     );
-    assert.ok(prompt.includes('Empresa Demo'));
+    assert.ok(prompt.includes('Negocio Demo'));
     assert.ok(prompt.includes('Calle 1'));
     assert.ok(!prompt.includes('hard-coded brand'));
   });
@@ -74,7 +74,7 @@ describe('geminiService refinements', () => {
   });
 
   it('detects catalog categories from the configured catalog aliases', async () => {
-    assert.equal(geminiService.determinarCategoriaImagen('¿Tienen el servicio principal?', ''), 'servicio-principal');
+    assert.equal(geminiService.determinarCategoriaImagen('¿Tienen Kolflex?', ''), 'kolflex');
     assert.equal(geminiService.determinarCategoriaImagen('¿Cuál es el horario?', ''), null);
   });
 });

@@ -3,7 +3,7 @@ BOTBASEMVP
 
 Descripción
 -----------
-Motor genérico de conversaciones para WhatsApp Cloud y Gemini. La configuración del negocio y el catálogo se centralizan en `config/catalogo.js`; `src/config.js` solo conserva exportaciones de compatibilidad.
+Motor de conversaciones para WhatsApp Cloud y Gemini. El perfil predeterminado está configurado para CQPharma / Salud Articular (Kolflex y densitometría ósea), pero el negocio y el catálogo siguen siendo configurables desde `config/catalogo.js`; `src/config.js` solo conserva exportaciones de compatibilidad.
 
 Variables de entorno (.env)
 ---------------------------
@@ -12,10 +12,10 @@ Colocar un archivo .env en la raíz con al menos las siguientes variables (NO su
 - GEMINI_API_KEY=tu_clave
 - GEMINI_MODEL=gemini-3.5-flash-lite
 - ADMIN_WHATSAPP_NUMBER=+51XXXXXXXXX
-- BUSINESS_NAME=Empresa Demo
-- BUSINESS_INDUSTRY=Servicios
-- BUSINESS_ADDRESS=Av. Principal 123
-- BUSINESS_HOURS=Lunes a Sábado de 9:00 AM a 8:00 PM
+- BUSINESS_NAME=CQPharma / Salud Articular
+- BUSINESS_INDUSTRY=Salud articular
+- BUSINESS_ADDRESS=Dirección de atención
+- BUSINESS_HOURS=Lunes a sábado
 - BUSINESS_CONTACT_PHONE=+00 000 000 000
 - PUBLIC_BASE_URL=https://tu-dominio.example
 - PORT=3000
@@ -40,6 +40,7 @@ Catálogo y medios
 - Las imágenes se resuelven desde el catálogo centralizado y solo se envían URLs HTTP(S) válidas.
 - Las rutas locales bajo `/media/` se verifican antes de enviarse; una imagen inexistente no bloquea la respuesta de texto.
 - La detección de categorías puede ampliarse con `CATALOG_KEYWORDS` sin modificar el controlador.
+- El catálogo predeterminado ofrece `kolflex` y `densitometria-osea`; para captar un lead se solicita nombre y teléfono y se deriva a un asesor.
 
 Política de fallback heurístico
 ------------------------------
